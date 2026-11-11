@@ -1450,7 +1450,7 @@
     root.textContent = '';
     if (!state.motions.length) await loadMotions();
     if (token !== coachToken) return;
-    const listBox = h('div', { class: 'hw-list', 'aria-busy': 'true' }, h('div', { class: 'wait-line', 'aria-hidden': 'true' }));
+    const listBox = h('section', { class: 'panel hw-list', 'aria-busy': 'true' }, h('div', { class: 'wait-line', 'aria-hidden': 'true' }));
     const classBox = h('div', { class: 'coach-col', 'aria-busy': 'true' }, h('div', { class: 'wait-line', 'aria-hidden': 'true' }));
     root.append(h('div', { class: 'coach' },
       h('h1', { class: 'sr-only' }, 'Coach view'),
@@ -1469,7 +1469,7 @@
   function homeworkCreateCard(listBox) {
     const hw = state.hw;
     if (!hw.motionId || !motionById(hw.motionId)) hw.motionId = (currentMotion() || {}).id;
-    const card = h('section', { class: 'card hw-card', 'aria-labelledby': 'hw-card-title' });
+    const card = h('section', { class: 'panel hw-card', 'aria-labelledby': 'hw-card-title' });
 
     async function createLink() {
       if (hw.busy) return;
@@ -1512,16 +1512,16 @@
       const select = h('select', { id: 'hw-motion', onchange: (e) => { hw.motionId = e.target.value; hw.link = null; paint(); const s = $('#hw-motion'); if (s) s.focus(); } },
         state.motions.map((mm) => h('option', { value: mm.id, selected: mm.id === hw.motionId }, mm.motion)));
       const modeCtl = modes.length > 1
-        ? h('div', { class: 'mode-toggle', role: 'group', 'aria-labelledby': 'hw-mode-label' }, modes.map((md) =>
-          h('button', { type: 'button', 'aria-pressed': String(md === hw.mode), onclick: () => { hw.mode = md; hw.link = null; paint(); const b = $('.hw-card .mode-toggle button[aria-pressed="true"]'); if (b) b.focus(); } }, md === 'defend' ? T.modeDefend : T.modeAttack)))
+        ? h('div', { class: 'modes', role: 'group', 'aria-labelledby': 'hw-mode-label' }, modes.map((md) =>
+          h('button', { type: 'button', 'aria-pressed': String(md === hw.mode), onclick: () => { hw.mode = md; hw.link = null; paint(); const b = $('.hw-card .modes button[aria-pressed="true"]'); if (b) b.focus(); } }, md === 'defend' ? T.modeDefend : T.modeAttack)))
         : h('p', { class: 'muted' }, hw.mode === 'defend' ? T.modeDefend : T.modeAttack);
       add(card, [
-        h('h2', { class: 'eyebrow', id: 'hw-card-title' }, T.hwLinkLabel),
+        h('div', { class: 'coach-head' }, h('h2', { id: 'hw-card-title' }, T.hwLinkLabel)),
         h('div', { class: 'field' }, h('label', { for: 'hw-motion', class: 'field-label' }, T.hwMotion), select),
         h('div', { class: 'field' }, h('span', { class: 'field-label', id: 'hw-mode-label' }, T.hwMode), modeCtl),
         h('div', { class: 'hw-create' },
           h('button', { type: 'button', class: 'btn primary', 'aria-busy': hw.busy ? 'true' : null, onclick: createLink }, T.hwCreate),
-          h('p', { class: 'helper' }, T.hwHelper)),
+          h('span', { class: 'help' }, T.hwHelper)),
         hw.error ? h('p', { class: 'hw-error', role: 'alert' }, hw.error) : null,
         hw.link ? h('div', { class: 'hw-link' },
           h('label', { for: 'hw-url', class: 'sr-only' }, T.hwLinkLabel),
