@@ -1186,7 +1186,7 @@
     const heardText = h('p', { class: 'is-clamped' }, '“' + a.transcript + '”');
     const heard = h('div', { class: 'heard' },
       h('span', { class: 'label' }, T.heardTitle), heardText,
-      h('span', { class: 'heard-note' }, a.typed ? 'typed by you' : "transcribed by the browser's speech service"));
+      h('span', { class: 'heard-note' }, a.recorded ? 'sample speech (recorded run)' : a.typed ? 'typed by you' : "transcribed by the browser's speech service"));
     const heardBtn = h('button', {
       type: 'button', class: 'btn ghost', 'aria-expanded': 'false',
       onclick: (e) => { const open = heardText.classList.toggle('is-clamped'); e.currentTarget.setAttribute('aria-expanded', String(!open)); heard.scrollIntoView({ block: 'nearest', behavior: anim ? 'smooth' : 'auto' }); }
@@ -1744,6 +1744,19 @@
     const p = parseHash();
     if (p.name === 'motion' || p.name === 'coach') route();
     else go('motion', { replace: true });
+    // Team check and screenshots only: ?demo=dropped runs the recorded sample into the report,
+    // ?demo=retry also runs the second try. Everything it shows is labelled "Recorded run".
+    const demo = new URLSearchParams(location.search).get('demo');
+    if (demo === 'dropped' || demo === 'retry') {
+      startRecorded();
+      if (demo === 'retry') {
+        const t = setInterval(() => {
+          if (state.pending) return;
+          if (state.attempts.length === 1) tryAgain(state.attempts[0]);
+          else if (state.attempts.length >= 2) clearInterval(t);
+        }, 400);
+      }
+    }
   }
 
   // Exposed for the team's console checks only.
