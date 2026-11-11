@@ -375,6 +375,7 @@
     const type = (brk && brk.type) || 'none';
     const engine = brk && hasText(brk.label) ? brk.label.trim() : '';
     if (type === 'none') return engine || (mode === 'defend' ? 'Your defence answered their attack' : BREAK_COPY.none.label);
+    if (type === 'dropped_argument' && engine) return engine;
     if (COPY_LABEL_TYPES.indexOf(type) >= 0) {
       const c = BREAK_COPY[type].label;
       // keep the engine's longer "No link: X does not prove Y"; otherwise the copy.md label as written
@@ -535,12 +536,12 @@
         }
       },
         h('label', { for: 'hw-name', class: 'field-label' }, T.hwName),
-        h('div', { class: 'hw-join-row' }, input, h('button', { type: 'submit', class: 'btn btn-primary btn-lg' }, T.hwStart)),
+        h('div', { class: 'hw-join-row' }, input, h('button', { type: 'submit', class: 'btn primary' }, T.hwStart)),
         h('p', { class: 'helper', id: 'hw-name-help' }, T.hwNameHelper));
     } else {
       actions = h('div', { class: 'mc-actions' },
-        h('button', { type: 'button', class: 'btn btn-primary btn-lg', id: 'btn-start', onclick: () => startLive() }, mode === 'defend' ? T.startDefend : T.startAttack),
-        hwk ? null : h('button', { type: 'button', class: 'btn btn-secondary', onclick: startRecorded }, T.recorded),
+        h('button', { type: 'button', class: 'btn primary', id: 'btn-start', onclick: () => startLive() }, mode === 'defend' ? T.startDefend : T.startAttack),
+        hwk ? null : h('button', { type: 'button', class: 'btn ghost', onclick: startRecorded }, T.recorded),
         (!hwk && state.motions.length > 1) ? h('button', { type: 'button', class: 'btn btn-text', id: 'btn-new-motion', 'aria-expanded': String(state.pickerOpen), 'aria-controls': 'motion-picker', onclick: togglePicker }, T.newMotion) : null,
         mode === 'attack' ? h('p', { class: 'helper' }, T.prep) : null);
     }
@@ -1025,7 +1026,7 @@
     if (!a) { go('motion', { replace: true }); return; }
     const view = reportView(a);
     root.append(view.el);
-    drawChain(view.chainBox, motionById(a.motionId) || currentMotion(), a.result, a.mode);
+    if (view.chainBox) drawChain(view.chainBox, motionById(a.motionId) || currentMotion(), a.result, a.mode);
   }
 
   function waitView(P) {
@@ -1041,8 +1042,54 @@
     return h('div', { class: 'state-panel', role: 'alert' },
       h('h1', null, T.judgeError),
       h('div', { class: 'state-actions' },
-        h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { const P = state.pending; if (!P) return; P.failed = false; P.slow = false; renderReport(); runAnalyze(); } }, T.tryAgain),
-        state.assignment ? null : h('button', { type: 'button', class: 'btn btn-secondary', onclick: useRecordedExample }, T.useRecorded)));
+        h('button', { type: 'button', class: 'btn primary', onclick: () => { const P = state.pending; if (!P) return; P.failed = false; P.slow = false; renderReport(); runAnalyze(); } }, T.tryAgain),
+        state.assignment ? null : h('button', { type: 'button', class: 'btn ghost', onclick: useRecordedExample }, T.useRecorded)));
+  }
+
+  // One row per opponent point: their point, a wire, the student's answer (design: report.html).
+  function pointRows(motion, r, anim) {
+    const brk = r.break || {};
+    const type = breakType(r);
+    const unsure = isUnsure(r);
+    const attacks = Array.isArray(r.attacks) ? r.attacks : [];
+    const both = type === 'dropped_argument' && /both/i.test(String(brk.label || ''));
+    return argsOf(motion).map((arg, i) => {
+      const mine = attacks.filter((x) => x.arg === arg.id);
+      const best = mine.find((x) => x.holds) || mine[0] || null;
+      const isBreak = !unsure && type !== 'none' && (brk.arg === arg.id || both);
+      const dropped = isBreak && type === 'dropped_argument';
+      const d = { '--d': (anim ? 250 + i * 450 : 0) + 'ms' };
+      const their = h('div', { class: 'their' },
+        h('span', { class: 'label' }, 'Their point ' + (i + 1)),
+        h('div', { class: 'claim' }, textOf(arg.claim)),
+        h('div', { class: 'links' },
+          hasText(arg.reason) ? h('div', { class: 'ln' }, h('b', null, 'REASON'), h('span', null, arg.reason)) : null,
+          hasText(arg.evidence) ? h('div', { class: 'ln' }, h('b', null, 'EVIDENCE'), h('span', null, arg.evidence)) : null,
+          hasText(arg.impact) ? h('div', { class: 'ln' }, h('b', null, 'IMPACT'), h('span', null, arg.impact)) : null));
+      let wire, yours;
+      if (isBreak) {
+        wire = h('div', { class: 'wire cut', style: d }, h('span', { class: 'w-line' }), h('span', { class: 'warm' }), h('span', { class: 'ember big', 'aria-hidden': 'true' }));
+        yours = h('div', { class: 'yours empty', style: d },
+          h('span', { class: 'chip breaks', style: { 'align-self': 'flex-start' } }, h('span', { class: 'ember', 'aria-hidden': 'true' }), T.breaks),
+          h('div', { class: 'what' }, breakLabel(brk, 'attack')),
+          (!dropped && best) ? h('div', { class: 'quote' }, best.quote) : null,
+          breakWhy(brk) ? h('div', { class: 'why' }, breakWhy(brk)) : null);
+      } else if (best) {
+        const holds = !!best.holds;
+        wire = h('div', { class: 'wire ' + (holds ? 'ok' : 'open'), style: d }, h('span', { class: 'w-line' }), holds ? h('span', { class: 'w-end' }) : null);
+        yours = h('div', { class: 'yours', style: d },
+          h('div', { class: 'yours-head' }, h('span', { class: 'label' }, 'Your answer'),
+            holds ? h('span', { class: 'chip holds' }, h('span', { class: 'tick', 'aria-hidden': 'true' }), T.holds)
+              : h('span', { class: 'chip standing' }, 'Not yet')),
+          h('div', { class: 'quote' }, best.quote));
+      } else {
+        wire = h('div', { class: 'wire open', style: d }, h('span', { class: 'w-line' }));
+        yours = h('div', { class: 'yours empty', style: d },
+          h('span', { class: 'chip standing', style: { 'align-self': 'flex-start' } }, 'Still standing'),
+          h('div', { class: 'why' }, 'No answer to this point yet.'));
+      }
+      return h('div', { class: 'rrow' }, their, wire, yours);
+    });
   }
 
   function reportView(a) {
@@ -1051,67 +1098,70 @@
     const type = breakType(r);
     const none = type === 'none';
     const unsure = isUnsure(r);
-    const label = breakLabel(brk, a.mode);
-    const why = breakWhy(brk);
     const n = state.attempts.indexOf(a) + 1 || r.attempt || 1;
     const anim = !reducedMotion();
-    const hasChain = !!(getChain() && typeof getChain().render === 'function');
-    // with chain.js animating, the verdict lands as the break marker opens (~1.1 s)
-    const k = hasChain ? 1.7 : 1;
-    const d = (ms) => ({ '--d': (anim ? Math.round(ms * k) : 0) + 'ms' });
+    const motion = motionById(a.motionId) || currentMotion();
+    const useRows = a.mode !== 'defend' && argsOf(motion).length > 0 && !(motion && motion.kind === 'challenge');
 
-    let title, verdict, whyLine = null;
-    if (unsure) {
-      // chain.js prints the low-confidence line inside the diagram; print it here only without chain.js
-      title = null;
-      verdict = hasChain ? null : h('h1', { class: 'verdict is-unsure reveal', style: d(150) }, T.lowConf);
-    } else if (none) {
-      title = null;
-      verdict = h('h1', { class: 'verdict is-hero is-holds reveal', style: d(150) }, T.titleHolds);
-      // chain.js prints "Every link you attacked holds" under the diagram: don't repeat it
-      const extra = hasChain ? (hasText(brk.why) && brk.why.trim() !== label ? brk.why.trim() : '') : label;
-      whyLine = extra ? h('p', { class: 'why reveal', style: d(300) }, extra) : null;
+    let h1;
+    if (unsure) h1 = h('h1', { class: 'is-unsure' }, T.lowConf);
+    else if (none) h1 = h('h1', null, T.titleHolds);
+    else h1 = h('h1', null, T.titleBroke, h('span', { class: 'ember big', 'aria-hidden': 'true' }));
+    const sub = hasText(r.landed) ? r.landed.trim() : '';
+
+    let chainBox = null;
+    let body;
+    if (useRows) {
+      body = h('div', { class: 'rows' }, pointRows(motion, r, anim));
     } else {
-      title = h('p', { class: 'eyebrow' }, T.titleBroke);
-      verdict = h('h1', { class: 'verdict reveal' + (label.length <= 30 ? ' is-hero' : ''), style: d(650) }, label);
-      whyLine = why ? h('p', { class: 'why reveal', style: d(800) }, why) : null;
+      chainBox = h('div', { class: 'chain-box' });
+      body = h('div', { class: 'rows' },
+        (!none && !unsure) ? h('div', { class: 'yours empty' },
+          h('span', { class: 'chip breaks', style: { 'align-self': 'flex-start' } }, h('span', { class: 'ember', 'aria-hidden': 'true' }), T.breaks),
+          h('div', { class: 'what' }, breakLabel(brk, a.mode)),
+          breakWhy(brk) ? h('div', { class: 'why' }, breakWhy(brk)) : null) : null,
+        chainBox);
     }
 
-    const chainBox = h('div', { class: 'chain-box' });
-    const heardId = 'heard-' + n;
-    const heard = h('div', { class: 'heard', id: heardId, hidden: true },
-      h('p', { class: 'tag' }, T.heardTitle), h('p', null, '“' + a.transcript + '”'));
+    const heardText = h('p', { class: 'is-clamped' }, '“' + a.transcript + '”');
+    const heard = h('div', { class: 'heard' },
+      h('span', { class: 'label' }, T.heardTitle), heardText,
+      h('span', { class: 'heard-note' }, a.typed ? 'typed by you' : "transcribed by the browser's speech service"));
     const heardBtn = h('button', {
-      type: 'button', class: 'btn btn-text', 'aria-expanded': 'false', 'aria-controls': heardId,
-      onclick: (e) => { const open = heard.hidden; heard.hidden = !open; e.currentTarget.setAttribute('aria-expanded', String(open)); }
+      type: 'button', class: 'btn ghost', 'aria-expanded': 'false',
+      onclick: (e) => { const open = heardText.classList.toggle('is-clamped'); e.currentTarget.setAttribute('aria-expanded', String(!open)); heard.scrollIntoView({ block: 'nearest', behavior: anim ? 'smooth' : 'auto' }); }
     }, T.seeHeard);
 
     const hint = hasText(r.hint) ? r.hint.trim() : ((BREAK_COPY[type] && BREAK_COPY[type].hint) || '');
-    const primary = (none && !unsure)
-      ? (state.assignment ? doneLine() : h('button', { type: 'button', class: 'btn btn-primary btn-lg', onclick: nextMotion }, T.nextMotion))
-      : h('button', { type: 'button', class: 'btn btn-primary btn-lg', onclick: () => tryAgain(a) }, T.tryAgain);
-    const secondary = (none && !unsure) ? h('button', { type: 'button', class: 'btn btn-secondary', onclick: () => tryAgain(a) }, T.tryAgain) : null;
+    const done = none && !unsure;
+    const primary = done
+      ? (state.assignment ? doneLine() : h('button', { type: 'button', class: 'btn primary', onclick: nextMotion }, T.nextMotion, h('span', { class: 'arrow', 'aria-hidden': 'true' }, '→')))
+      : h('button', { type: 'button', class: 'btn primary', onclick: () => tryAgain(a) }, T.tryAgain, h('span', { class: 'arrow', 'aria-hidden': 'true' }, '→'));
+    const again = done ? h('button', { type: 'button', class: 'btn ghost', onclick: () => tryAgain(a) }, T.tryAgain) : null;
 
-    const fix = h('section', { class: 'card fix-card reveal', style: d(950), 'aria-label': T.hintTitle },
-      hint ? h('h2', { class: 'eyebrow' }, T.hintTitle) : null,
-      hint ? h('p', { class: 'hint' }, hint) : null,
-      h('div', { class: 'fix-actions' }, primary, secondary, heardBtn),
-      heard);
+    const side = h('aside', { class: 'panel rp-hint', 'aria-label': T.hintTitle },
+      h('span', { class: 'label' }, done ? 'One more question' : T.hintTitle),
+      hint ? h('q', null, hint) : null,
+      (!done && n === 1) ? h('p', { class: 'lock' }, h('span', { class: 'kbd' }, 'after 1 retry'), 'Model answer unlocks after you try once more.') : null,
+      h('div', { class: 'tries' },
+        [1, 2, 3].map((k) => h('span', { class: 'dot' + (k <= n ? ' on' : '') })),
+        h('span', { class: 'tries-l' }, done ? 'Try ' + n + ' · it holds' : 'Try ' + n + ' · fix it in your own words')),
+      h('p', { class: 'why-ask' }, 'We ask instead of telling. Tutors that hand over answers can leave students worse off once the tool is gone (Bastani et al., ', h('i', null, 'PNAS'), ', 2025).'),
+      h('div', { class: 'actions' }, primary, again, heardBtn));
 
-    const delivery = a.body ? deliveryView(a.body, { sample: a.sampleBody, delay: anim ? 1150 : 0 }) : null;
+    const delivery = a.body ? deliveryView(a.body, { sample: a.sampleBody }) : null;
 
-    const el = h('div', { class: 'report' },
-      h('div', { class: 'report-head' },
-        title || h('span'),
-        h('div', { class: 'badges' },
-          a.recorded ? h('span', { class: 'badge' }, T.recorded) : null,
-          n > 1 ? h('span', { class: 'badge' }, T.attempt(n)) : null)),
-      h('div', { class: 'report-grid' },
-        h('div', { class: 'report-main' },
-          hasText(r.landed) ? h('p', { class: 'landed reveal', style: d(0) }, r.landed) : null,
-          verdict, whyLine, chainBox),
-        h('div', { class: 'report-side' }, fix, delivery)),
-      h('footer', { class: 'report-foot' }, h('span', null, footerText(r)), a.recorded && r.source !== 'replay' ? h('span', null, T.recorded) : null));
+    const el = h('div', { class: 'rp' + (anim ? ' anim' : '') },
+      h('section', { class: 'panel rp-map', 'aria-label': 'Argument map' },
+        h('div', { class: 'rp-head' },
+          h('div', null, h1, sub ? h('p', { class: 'rp-sub' }, sub) : null),
+          h('div', { class: 'badges' },
+            a.recorded ? h('span', { class: 'badge' }, T.recorded) : null,
+            n > 1 ? h('span', { class: 'badge' }, 'Try ' + n) : null)),
+        body, heard),
+      side,
+      delivery,
+      h('footer', { class: 'rp-foot' }, h('span', null, footerText(r)), a.recorded && r.source !== 'replay' ? h('span', null, T.recorded + ' · sample speech') : null));
     return { el: el, chainBox: chainBox };
   }
 
@@ -1149,24 +1199,30 @@
     const marks = (body.marks || []).slice(0, 2).map((m) => ({
       t: m.t != null ? String(m.t) : fmtTime(m.sec || 0),
       sec: clamp(typeof m.sec === 'number' ? m.sec : parseTime(m.t), 0, 60),
+      n: Number(m.n) || 0,
+      type: m.type,
       label: m.label || MARK_LABEL[m.type] || ''
     }));
     const lines = deliveryLines(body);
     if (!marks.length && !lines.length) return null;
-    // mark 1 is labelled above the track and mark 2 below it, so two labels never collide
-    const strip = h('div', { class: 'strip', role: 'img', 'aria-label': 'Timeline 0:00 to 1:00' + (marks.length ? ': ' + marks.map((m) => m.t + ' ' + m.label).join(', ') : '') },
-      h('div', { class: 'strip-track' }),
-      h('span', { class: 'strip-tick is-start' }, '0:00'),
-      h('span', { class: 'strip-tick is-end' }, '1:00'),
-      marks.map((m) => h('span', { class: 'strip-dot', style: { '--p': String(m.sec / 60) } })),
+    // the second label drops below the axis when two marks sit close together
+    const close = marks.length === 2 && Math.abs(marks[0].sec - marks[1].sec) < 22;
+    const time = h('div', { class: 'time' + (close ? ' has-below' : ''), role: 'img', 'aria-label': 'Timeline 0:00 to 1:00' + (marks.length ? ': ' + marks.map((m) => m.t + ' ' + m.label).join(', ') : '') },
+      h('div', { class: 'axis' }),
+      h('div', { class: 'ticks' }, ['0:00', '0:15', '0:30', '0:45', '1:00'].map((t) => h('span', null, t))),
       marks.map((m, i) => {
         const p = m.sec / 60;
-        return h('span', { class: 'strip-label is-' + (p < 0.2 ? 'start' : p > 0.8 ? 'end' : 'mid') + (i === 1 ? ' is-below' : ''), style: { '--p': String(p) } }, m.t + ' ' + m.label);
+        const text = (m.type === 'face_touch' && m.n > 1) ? m.label + ' ×' + m.n : m.t + ' · ' + m.label;
+        return h('div', { class: 'mark' + (p < 0.15 ? ' is-start' : p > 0.85 ? ' is-end' : '') + (close && i === 1 ? ' is-below' : ''), style: { '--p': String(p) } }, h('b', null, text), h('i'));
       }));
-    return h('section', { class: 'card delivery-card reveal', style: { '--d': (opts.delay || 0) + 'ms' }, 'aria-label': T.delivery },
-      h('div', { class: 'delivery-head' }, h('h2', { class: 'eyebrow' }, T.delivery), opts.sample ? h('span', { class: 'badge' }, T.sample) : null),
-      strip,
-      lines.map((l) => h('p', { class: 'delivery-line' }, l)));
+    const count = marks.length;
+    return h('section', { class: 'panel rp-strip', 'aria-label': T.delivery },
+      h('div', null,
+        h('span', { class: 'label' }, T.delivery),
+        h('div', { class: 'strip-sub' }, count + (count === 1 ? ' note' : ' notes') + ' · on this device'),
+        opts.sample ? h('span', { class: 'badge', style: { 'margin-top': '8px', display: 'inline-block' } }, T.sample) : null),
+      time,
+      h('div', { class: 'notes' }, lines.map((l) => h('p', null, l))));
   }
 
   // ---------------------------------------------------------------- chain (chain.js or fallback)
@@ -1265,11 +1321,11 @@
       : null;
 
     const actions = fixed
-      ? [state.assignment ? doneLine() : h('button', { type: 'button', class: 'btn btn-primary btn-lg', onclick: nextMotion }, T.nextMotion)]
+      ? [state.assignment ? doneLine() : h('button', { type: 'button', class: 'btn primary', onclick: nextMotion }, T.nextMotion)]
       : [
-        h('button', { type: 'button', class: 'btn btn-primary btn-lg', onclick: () => tryAgain(latest) }, T.tryAgain),
+        h('button', { type: 'button', class: 'btn primary', onclick: () => tryAgain(latest) }, T.tryAgain),
         model ? h('button', {
-          type: 'button', class: 'btn btn-secondary', 'aria-expanded': 'false', 'aria-controls': modelId,
+          type: 'button', class: 'btn ghost', 'aria-expanded': 'false', 'aria-controls': modelId,
           onclick: (e) => { const open = model.hidden; model.hidden = !open; e.currentTarget.setAttribute('aria-expanded', String(open)); }
         }, T.showModel) : null,
         state.assignment ? null : h('button', { type: 'button', class: 'btn btn-text', onclick: nextMotion }, T.nextMotion)
@@ -1397,13 +1453,13 @@
         h('div', { class: 'field' }, h('label', { for: 'hw-motion', class: 'field-label' }, T.hwMotion), select),
         h('div', { class: 'field' }, h('span', { class: 'field-label', id: 'hw-mode-label' }, T.hwMode), modeCtl),
         h('div', { class: 'hw-create' },
-          h('button', { type: 'button', class: 'btn btn-primary', 'aria-busy': hw.busy ? 'true' : null, onclick: createLink }, T.hwCreate),
+          h('button', { type: 'button', class: 'btn primary', 'aria-busy': hw.busy ? 'true' : null, onclick: createLink }, T.hwCreate),
           h('p', { class: 'helper' }, T.hwHelper)),
         hw.error ? h('p', { class: 'hw-error', role: 'alert' }, hw.error) : null,
         hw.link ? h('div', { class: 'hw-link' },
           h('label', { for: 'hw-url', class: 'sr-only' }, T.hwLinkLabel),
           h('input', { id: 'hw-url', class: 'mono', type: 'text', readonly: true, value: hw.link, onfocus: (e) => e.target.select() }),
-          h('button', { type: 'button', class: 'btn btn-secondary', onclick: copyLink }, T.hwCopy)) : null
+          h('button', { type: 'button', class: 'btn ghost', onclick: copyLink }, T.hwCopy)) : null
       ]);
     }
     paint();
@@ -1443,7 +1499,7 @@
     box.textContent = '';
     if (!data || !Array.isArray(data.students)) {
       box.append(h('div', { class: 'card' }, h('p', { class: 'muted' }, T.classError),
-        h('div', { class: 'state-actions', style: { 'margin-top': '12px' } }, h('button', { type: 'button', class: 'btn btn-secondary', onclick: renderCoach }, T.tryAgain))));
+        h('div', { class: 'state-actions', style: { 'margin-top': '12px' } }, h('button', { type: 'button', class: 'btn ghost', onclick: renderCoach }, T.tryAgain))));
       return;
     }
     const entries = Object.keys(data.breaks || {}).map((k) => [k, Number(data.breaks[k]) || 0]).filter((e) => e[1] > 0 && e[0] !== 'none').sort((a, b) => b[1] - a[1]);
@@ -1491,7 +1547,7 @@
       if (v) { actions.append(h('p', { class: 'review-done', role: 'status' }, T.saved(v))); return; }
       ['agree', 'disagree'].forEach((verdict) => {
         actions.append(h('button', {
-          type: 'button', class: 'btn btn-secondary',
+          type: 'button', class: 'btn ghost',
           onclick: async () => {
             const btns = $$('button', actions);
             btns.forEach((b) => { b.disabled = true; });
