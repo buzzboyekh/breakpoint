@@ -950,6 +950,32 @@ def _links(ctx, attacks):
     return out
 
 
+
+# ====================================================================== kid-facing text (lead)
+_ARG_ID = re.compile(r"\b(?:point |argument )?A([1-5])\b")
+_STUDENT = (
+    (re.compile(r"\bThe student's\b"), "Your"), (re.compile(r"\bthe student's\b"), "your"),
+    (re.compile(r"\bThe student\b"), "You"), (re.compile(r"\bthe student\b"), "you"),
+)
+
+
+def _kid_text(s):
+    """Final pass on every line a child reads: no internal ids (A1, A2), second person."""
+    if not isinstance(s, str) or not s:
+        return s
+    def _ord(m):
+        i = int(m.group(1)) - 1
+        return "their %s point" % (ORDINALS[i] if i < len(ORDINALS) else "next")
+    s = _ARG_ID.sub(_ord, s)
+    for rx, rep in _STUDENT:
+        s = rx.sub(rep, s)
+    s = re.sub(r"\bYou (stays|gives|says|uses|makes|turns|names|answers|brings|switches)\b",
+               lambda m: "You " + {"stays": "stay", "gives": "give", "says": "say", "uses": "use", "makes": "make",
+                                   "turns": "turn", "names": "name", "answers": "answer", "brings": "bring",
+                                   "switches": "switch"}[m.group(1)], s)
+    return s.replace("  ", " ").strip()
+
+
 def _build(ctx, obj):
     """Grounded, rule-checked AnalyzeResult body (without source, model, tokens, ms)."""
     defence = None
@@ -1025,11 +1051,12 @@ def _build(ctx, obj):
         "attacks": [{"arg": x["arg"], "link": x["link"], "quote": x["quote"], "holds": bool(x["holds"])}
                     for x in attacks],
         "links": _links(ctx, attacks),
-        "break": {"type": b["type"], "arg": b.get("arg"), "link": b.get("link"), "label": label, "why": why},
-        "hint": hint,
-        "landed": landed,
+        "break": {"type": b["type"], "arg": b.get("arg"), "link": b.get("link"), "label": label,
+                  "why": _kid_text(why)},
+        "hint": _kid_text(hint),
+        "landed": _kid_text(landed),
         "confidence": round(conf, 2),
-        "model_answer": model_answer,
+        "model_answer": _kid_text(model_answer),
     }
     if defence is not None:
         res["defence"] = defence
