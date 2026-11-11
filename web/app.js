@@ -617,7 +617,7 @@
     state.attempts = [];
     syncMotionHash();
     renderMotion();
-    const b = $('.mode-toggle button[aria-pressed="true"]');
+    const b = $('.modes button[aria-pressed="true"]');
     if (b) b.focus({ preventScroll: true });
   }
   function togglePicker() {
@@ -663,7 +663,7 @@
 
   function setStatus(text, idle) {
     $('#live-status-text').textContent = text || '';
-    $('.live').classList.toggle('is-idle', !!idle);
+    $('#live-status').classList.toggle('is-idle', !!idle);
   }
   function liveMsg(text, actions) {
     const box = $('#live-msg');
@@ -671,7 +671,7 @@
     $('#live-msg-text').textContent = text;
     const acts = $('#live-msg-actions');
     acts.textContent = '';
-    (actions || []).forEach((a) => acts.append(h('button', { type: 'button', class: 'btn ' + (a.primary ? 'btn-primary' : 'btn-secondary'), onclick: a.onclick }, a.label)));
+    (actions || []).forEach((a) => acts.append(h('button', { type: 'button', class: 'btn ' + (a.primary ? 'primary' : 'ghost'), onclick: a.onclick }, a.label)));
     box.hidden = false;
   }
 
@@ -733,9 +733,47 @@
       return;
     }
     $('#cam-state').hidden = true;
+    startAscii(L);
     await initBody(L);
     if (L !== state.live) return;
     runLive(L);
+  }
+
+  // The camera as glowing text (design: live.html). The real <video> stays in the page, hidden,
+  // because body tracking reads its frames. Nothing here leaves the browser.
+  function startAscii(L) {
+    const v = $('#cam-video'), pre = $('#ascii');
+    if (!v || !pre) return;
+    const W = 96, H = 50, chars = ' .:-=+*#%@';
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    const ratio = (W * 8.1) / (H * 11); // the text block's shape on screen
+    let last = 0;
+    function frame(now) {
+      if (state.live !== L || L.ended || !L.stream) { pre.textContent = ''; return; }
+      L.asciiRaf = requestAnimationFrame(frame);
+      if (now - last < 80 || v.readyState < 2 || !v.videoWidth) return;
+      last = now;
+      try {
+        const vw = v.videoWidth, vh = v.videoHeight;
+        const sw = Math.min(vw, vh * ratio), sh = Math.min(vh, vw / ratio);
+        g.save(); g.translate(W, 0); g.scale(-1, 1);
+        g.drawImage(v, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, W, H);
+        g.restore();
+        const d = g.getImageData(0, 0, W, H).data;
+        let out = '';
+        for (let y = 0; y < H; y++) {
+          for (let x = 0; x < W; x++) {
+            const i = (y * W + x) * 4;
+            const lum = (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255;
+            out += chars[Math.min(chars.length - 1, Math.floor(Math.pow(lum, 0.85) * chars.length))];
+          }
+          out += '\n';
+        }
+        pre.textContent = out;
+      } catch (e) { /* frame not ready yet */ }
+    }
+    L.asciiRaf = requestAnimationFrame(frame);
   }
 
   async function startCamera(L) {
@@ -902,6 +940,9 @@
     if (L && L.stream) { L.stream.getTracks().forEach((t) => { try { t.stop(); } catch (e) { /* ignore */ } }); L.stream = null; }
     const v = $('#cam-video');
     if (v) v.srcObject = null;
+    if (L && L.asciiRaf) { cancelAnimationFrame(L.asciiRaf); L.asciiRaf = 0; }
+    const pre = $('#ascii');
+    if (pre) pre.textContent = '';
   }
 
   function abortLive() {
