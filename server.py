@@ -6,6 +6,8 @@ Python 3.9 standard library only.  Run:  python3 server.py   ->  http://127.0.0.
 import json
 import os
 import pathlib
+import re
+import secrets
 import sys
 import threading
 import time
@@ -20,6 +22,9 @@ DATA.mkdir(exist_ok=True)
 ATTEMPTS = DATA / "attempts.json"
 ASSIGNMENTS = DATA / "assignments.json"
 TAKEHOME = DATA / "takehome.json"
+PARENT = DATA / "parent.json"
+NOTE_MAX = 280
+TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{10,64}$")
 PORT = int(os.environ.get("PORT", "8765"))
 
 sys.path.insert(0, str(ROOT))
@@ -145,7 +150,87 @@ def save_assignments(items):
     os.replace(tmp, ASSIGNMENTS)
 
 
-def assignment_summary(a, attempts):
+def load_parent_rows():
+    """One row per student per assignment: {token, assignment_id, student, note}. Bad rows are skipped."""
+    try:
+        rows = json.loads(PARENT.read_text())
+    except Exception:
+        return []
+    if not isinstance(rows, list):
+        return []
+    return [r for r in rows if isinstance(r, dict) and isinstance(r.get("token"), str)
+            and isinstance(r.get("assignment_id"), str) and isinstance(r.get("student"), str)]
+
+
+def save_parent_rows(items):
+    tmp = PARENT.with_suffix(".tmp")
+    tmp.write_text(json.dumps(items, ensure_ascii=False, indent=1))
+    os.replace(tmp, PARENT)
+
+
+def _break_type(attempt):
+    res = attempt.get("result")
+    brk = res.get("break") if isinstance(res, dict) else None
+    t = brk.get("type") if isinstance(brk, dict) else None
+    return t if isinstance(t, str) else None
+
+
+# Plain words for a parent. No scores, no quotes from the child's answer.
+PARENT_WEAK_SPOT = {
+    "dropped_argument": "Answered one of the two points and skipped the other.",
+    "no_link": "Made a point without showing how it leads to the answer.",
+    "number_without_so_what": "Questioned a number without saying why it matters.",
+    "missed_the_attack": "Answered a different point from the one raised.",
+    "new_argument_while_defending": "Moved to a new point instead of answering the one raised.",
+    "missed_the_challenge": "Did not answer the question that was asked.",
+    "no_condition": "Did not say when their answer might not be true.",
+    "ignored_best_counterpoint": "Left out the strongest point on the other side.",
+    "off_point": "Wandered away from the question.",
+    "none": "No weak spot found on the first try.",
+}
+
+
+def parent_view(row, attempts, assignments, takehomes):
+    """Everything a parent may see. Deliberately no transcript, scores or body notes."""
+    a = next((x for x in assignments if isinstance(x, dict) and x.get("id") == row["assignment_id"]), None)
+    mine = [t for t in attempts if t.get("assignment_id") == row["assignment_id"] and t.get("student") == row["student"]]
+    motion = None
+    if a and engine_motions and hasattr(engine_motions, "list_motions"):
+        try:
+            motion = next((m for m in engine_motions.list_motions() if m.get("id") == a.get("motion_id")), None)
+        except Exception:
+            motion = None
+    first = _break_type(mine[0]) if mine else None
+    last = _break_type(mine[-1]) if mine else None
+    if not mine:
+        outcome = "No tries yet."
+    elif first in (None, "none"):
+        outcome = "Held up the first time."
+    elif last == "none":
+        outcome = "Fixed it."
+    else:
+        outcome = "Not fixed yet."
+    th = [t for t in takehomes if t.get("assignment_id") == row["assignment_id"] and t.get("student") == row["student"]
+          and isinstance(t.get("said"), str) and t["said"].strip()]
+    note = row.get("note") if isinstance(row.get("note"), str) else ""
+    name = row["student"].split()
+    return {
+        "first_name": name[0] if name else "Student",
+        "question": (motion or {}).get("motion") if isinstance((motion or {}).get("motion"), str) else "",
+        "tries": len(mine),
+        "how": ("Typed" if mine[-1].get("typed") else "Spoken") if mine else None,
+        "weak_spot": PARENT_WEAK_SPOT.get(first, "One weak spot found on the first try.") if mine else None,
+        "outcome": outcome,
+        "fixed": bool(mine) and first not in (None, "none") and last == "none",
+        "coach_note": note,
+        "ask_at_home": {
+            "question": (motion or {}).get("take_home") if isinstance((motion or {}).get("take_home"), str) else "",
+            "answer": th[-1]["said"][:2000] if th else "",
+        },
+    }
+
+
+def assignment_summary(a, attempts, parent_rows=()):
     """Who did the homework and where it broke: per student, tries and whether the last try held."""
     mine = [t for t in attempts if t.get("assignment_id") == a["id"]]
     people = {}
@@ -154,11 +239,14 @@ def assignment_summary(a, attempts):
                                                               "first_break": None, "last_break": None})
         p["tries"] += 1
         p["typed"] = bool(t.get("typed"))   # how the LAST try was given
-        b = ((t.get("result") or {}).get("break") or {}).get("type")
+        b = _break_type(t)
         if p["first_break"] is None:
             p["first_break"] = b
         p["last_break"] = b
+    notes = {r["student"]: r.get("note") for r in parent_rows if r.get("assignment_id") == a["id"]}
     for p in people.values():
+        n = notes.get(p["name"])
+        p["note"] = n if isinstance(n, str) else ""
         p["fixed"] = p["first_break"] not in (None, "none") and p["last_break"] == "none"
     return {**a, "submissions": list(people.values()), "attempts": len(mine)}
 
@@ -201,18 +289,31 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(503, {"error": "motions not ready"})
         if path == "/api/assignments":
             with _lock:
-                items, attempts = load_assignments(), load_attempts()
-            return self._json(200, [assignment_summary(a, attempts) for a in reversed(items)])
+                items, attempts, prows = load_assignments(), load_attempts(), load_parent_rows()
+            return self._json(200, [assignment_summary(a, attempts, prows) for a in reversed(items)])
         if path.startswith("/api/assignments/"):
             aid = path.rsplit("/", 1)[-1]
             with _lock:
-                items, attempts = load_assignments(), load_attempts()
+                items, attempts, prows = load_assignments(), load_attempts(), load_parent_rows()
             for a in items:
                 if a["id"] == aid:
-                    return self._json(200, assignment_summary(a, attempts))
+                    return self._json(200, assignment_summary(a, attempts, prows))
             return self._json(404, {"error": "assignment not found"})
         if path.startswith("/a/"):  # a shareable assignment link opens the app with that assignment
             return self._static("/index.html")
+        if path.startswith("/p/"):  # a parent link opens the app on the parent page
+            return self._static("/index.html")
+        if path.startswith("/api/parent/"):
+            token = path[len("/api/parent/"):]
+            if not TOKEN_RE.match(token):
+                return self._json(404, {"error": "link not found"})
+            with _lock:
+                rows, attempts, assignments, takehomes = (load_parent_rows(), load_attempts(),
+                                                          load_assignments(), load_takehomes())
+            row = next((r for r in rows if secrets.compare_digest(r["token"], token)), None)
+            if not row:
+                return self._json(404, {"error": "link not found"})
+            return self._json(200, parent_view(row, attempts, assignments if isinstance(assignments, list) else [], takehomes))
         if path == "/api/takehome":
             with _lock:
                 items = load_takehomes()
@@ -337,6 +438,35 @@ class Handler(BaseHTTPRequestHandler):
                 items.append(item)
                 save_takehomes(items[-200:])
             return self._json(200, {"ok": True, "id": item["id"]})
+        if path == "/api/parent-note":
+            if not isinstance(body, dict):
+                return self._json(400, {"error": "body must be an object"})
+            aid, student, note = body.get("assignment_id"), body.get("student"), body.get("note")
+            if not isinstance(aid, str) or not 0 < len(aid) <= 40:
+                return self._json(400, {"error": "assignment_id must be a short string"})
+            if not isinstance(student, str) or not 0 < len(student.strip()) <= 40:
+                return self._json(400, {"error": "student must be a name of 1 to 40 characters"})
+            if not isinstance(note, str):
+                return self._json(400, {"error": "note must be a string"})
+            note = note.strip()
+            if len(note) > NOTE_MAX:
+                return self._json(400, {"error": f"note must be {NOTE_MAX} characters or fewer"})
+            with _lock:
+                assignments = load_assignments()
+                known = isinstance(assignments, list) and any(isinstance(a, dict) and a.get("id") == aid for a in assignments)
+                did = any(t.get("assignment_id") == aid and t.get("student") == student for t in load_attempts())
+                if not (known and did):
+                    return self._json(404, {"error": "no homework from that student"})
+                rows = load_parent_rows()
+                row = next((r for r in rows if r["assignment_id"] == aid and r["student"] == student), None)
+                if row is None:
+                    row = {"token": secrets.token_urlsafe(16), "assignment_id": aid, "student": student}
+                    rows.append(row)
+                row["note"] = note
+                row["at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+                save_parent_rows(rows[-500:])
+            host = self.headers.get("Host") or f"127.0.0.1:{PORT}"
+            return self._json(200, {"ok": True, "token": row["token"], "url": f"http://{host}/p/{row['token']}"})
         if path == "/api/review":
             with _lock:
                 items = load_attempts()

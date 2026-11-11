@@ -75,6 +75,26 @@
     hwFirstBreak: (label, count) => 'Most common first break: ' + label + ' (' + count + ')',
     hwHeld: 'Held first time',
     hwFixed: 'Fixed',
+    pnLabel: 'Note for parent',
+    pnPh: 'One or two plain sentences a parent can read in 20 seconds.',
+    pnSave: 'Save',
+    pnSaved: 'Saved.',
+    pnCopy: 'Copy parent link',
+    pnCopied: 'Parent link copied.',
+    pnError: "That didn't save. Try again.",
+    pnCount: (n) => n + ' / 280',
+    pTitle: (n) => n + ' · This week',
+    pQuestion: "Tonight's question",
+    pDid: 'What they did',
+    pTries: (n) => n + (n === 1 ? ' try' : ' tries'),
+    pWeak: 'Weak spot on the first try',
+    pCoach: 'From the coach',
+    pNoNote: 'No note yet',
+    pAsk: 'Ask at home',
+    pWrote: 'What they wrote back',
+    pNoAnswer: 'Not answered yet.',
+    pFoot: 'Only people with this link can see this page. It shows first name only.',
+    pBad: "This link doesn't work. Ask the coach for a new one.",
     hwTries: (n) => n + (n === 1 ? ' try' : ' tries'),
     // Not in copy.md: short structural labels (flagged to design in the hand-off).
     hwLinkLabel: 'Homework link',
@@ -1730,6 +1750,40 @@
     return [head + ' · ' + first + ' → ' + shortLabel(s.last_break)];
   }
 
+  // Coach side of the parent page: a short note per student per assignment, and the link to send.
+  function parentNoteControl(assignmentId, sub) {
+    const name = typeof sub.name === 'string' ? sub.name : '';
+    if (!name) return null;
+    const uid = 'pn-' + assignmentId + '-' + name.replace(/[^A-Za-z0-9]/g, '_');
+    const input = h('textarea', { id: uid, class: 'pn-input', rows: 2, maxlength: 280, placeholder: T.pnPh, spellcheck: 'true' });
+    input.value = typeof sub.note === 'string' ? sub.note : '';
+    const count = h('span', { class: 'helper pn-count' }, T.pnCount(input.value.length));
+    const status = h('span', { class: 'helper', role: 'status' });
+    input.addEventListener('input', () => { count.textContent = T.pnCount(input.value.length); status.textContent = ''; });
+    const busy = [];
+    async function send(after) {
+      busy.forEach((b) => { b.disabled = true; });
+      status.textContent = '';
+      try {
+        const r = await postJSON('/api/parent-note', { assignment_id: assignmentId, student: name, note: input.value }, 8000);
+        if (!r || typeof r.url !== 'string') throw new Error('no link');
+        await after(r);
+      } catch (e) { status.textContent = T.pnError; }
+      busy.forEach((b) => { b.disabled = false; });
+    }
+    const save = h('button', { type: 'button', class: 'btn ghost pn-btn', onclick: () => send(() => { status.textContent = T.pnSaved; }) }, T.pnSave);
+    const copy = h('button', { type: 'button', class: 'btn ghost pn-btn', onclick: () => send(async (r) => {
+      let ok = false;
+      try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(r.url); ok = true; } } catch (e) { ok = false; }
+      if (ok) toast(T.pnCopied); else { status.textContent = r.url; }
+    }) }, T.pnCopy);
+    busy.push(save, copy);
+    return h('div', { class: 'pn' },
+      h('label', { for: uid, class: 'field-label' }, T.pnLabel),
+      input,
+      h('div', { class: 'pn-row' }, save, copy, count, status));
+  }
+
   function fillHomeworkList(box, list) {
     box.removeAttribute('aria-busy');
     box.textContent = '';
@@ -1742,7 +1796,7 @@
       const top = Object.keys(firsts).sort((x, y) => firsts[y] - firsts[x])[0];
       box.append(h('section', { class: 'card hw-item' },
         h('h2', { class: 'hw-item-title' }, T.hwHeader(motionShort(motionById(a.motion_id), a), subs.length)),
-        subs.length ? h('ul', { class: 'hw-subs is-hero' }, subs.map((s) => h('li', null, submissionLine(s)))) : null,
+        subs.length ? h('ul', { class: 'hw-subs is-hero' }, subs.map((s) => h('li', null, submissionLine(s), parentNoteControl(a.id, s)))) : null,
         top ? h('p', { class: 'hw-foot' }, T.hwFirstBreak(shortLabel(top), firsts[top])) : null));
     });
   }
@@ -1849,6 +1903,38 @@
       actions);
   }
 
+  // ---------------------------------------------------------------- parent page (/p/<token>)
+  async function renderParent(token) {
+    const root = $('#screen-parent');
+    root.textContent = '';
+    let d = null;
+    try { d = await getJSON('/api/parent/' + encodeURIComponent(token), 8000); } catch (e) { d = null; }
+    if (!d || typeof d.first_name !== 'string') {
+      root.append(h('div', { class: 'parent' }, h('section', { class: 'card' }, h('p', { class: 'muted' }, T.pBad))));
+      return;
+    }
+    const ask = d.ask_at_home || {};
+    const section = (id, title, kids) => h('section', { class: 'card pr-card', 'aria-labelledby': id },
+      h('h2', { class: 'eyebrow', id: id }, title), kids);
+    document.title = T.pTitle(d.first_name);
+    const tries = Number(d.tries) || 0;
+    root.append(h('div', { class: 'parent' },
+      h('h1', { class: 'pr-title' }, T.pTitle(d.first_name)),
+      section('pr-q', T.pQuestion, h('p', { class: 'pr-big' }, typeof d.question === 'string' ? d.question : '')),
+      section('pr-did', T.pDid, tries
+        ? h('ul', { class: 'pr-list' },
+          h('li', null, T.pTries(tries) + ' · ' + (d.how === 'Typed' ? 'Typed' : 'Spoken')),
+          hasText(d.weak_spot) ? h('li', null, h('b', null, T.pWeak + ': '), d.weak_spot) : null,
+          hasText(d.outcome) ? h('li', null, d.fixed ? h('span', { class: 'chip chip-hold' }, d.outcome) : d.outcome) : null)
+        : h('p', { class: 'muted' }, hasText(d.outcome) ? d.outcome : '')),
+      section('pr-coach', T.pCoach, hasText(d.coach_note) ? h('p', { class: 'pr-note' }, d.coach_note) : h('p', { class: 'muted' }, T.pNoNote)),
+      section('pr-ask', T.pAsk,
+        [hasText(ask.question) ? h('p', { class: 'pr-big' }, ask.question) : null,
+          h('p', { class: 'eyebrow pr-sub' }, T.pWrote),
+          hasText(ask.answer) ? h('p', { class: 'pr-note' }, '“' + ask.answer + '”') : h('p', { class: 'muted' }, T.pNoAnswer)]),
+      h('p', { class: 'helper pr-foot' }, T.pFoot)));
+  }
+
   // ---------------------------------------------------------------- boot
   function wireLive() {
     $('#btn-done').addEventListener('click', () => {
@@ -1881,6 +1967,16 @@
   }
 
   async function boot() {
+    // A parent link: /p/<token> shows one calm page and nothing else of the app.
+    const pm = location.pathname.match(/^\/p\/([A-Za-z0-9_-]+)\/?$/);
+    if (pm) {
+      const nav = $('#topnav'); if (nav) nav.hidden = true;
+      const brand = $('.brand'); if (brand) brand.removeAttribute('href');
+      $$('.screen').forEach((sc) => { sc.hidden = sc.getAttribute('data-screen') !== 'parent'; });
+      state.screen = 'parent';
+      renderParent(pm[1]);
+      return;
+    }
     wireLive();
     window.addEventListener('hashchange', route);
     getJSON('/api/health', 4000).then((hdata) => { state.health = hdata; }).catch(() => {});
