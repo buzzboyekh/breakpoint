@@ -1,0 +1,38 @@
+[
+  {
+    "id": "phones-attack-dropped",
+    "label": "SAMPLE: attacks only their first point",
+    "motion_id": "phones",
+    "mode": "attack",
+    "attempt": 1,
+    "expected_break": "dropped_argument",
+    "transcript": "I disagree with the ban. They say phones make students learn less because notifications pull attention away. But the problem is the notifications, not the phone. A teacher can ask everyone to switch on focus mode, and then nothing buzzes in the lesson. Also phones help us look things up when we don't understand a word, so learning can be faster with a phone. So a full ban goes too far."
+  },
+  {
+    "id": "phones-attack-fixed",
+    "label": "SAMPLE: second try, answers both points",
+    "motion_id": "phones",
+    "mode": "attack",
+    "attempt": 2,
+    "expected_break": "none",
+    "transcript": "I disagree with the ban. Their first point is that notifications pull attention away. But the problem is the notifications, not the phone, because focus mode stops every buzz during the lesson. Their second point is bullying. A ban in class does not stop the group chat, because the chat keeps running at lunch and after school. So the student who is targeted still sees every message. The ban moves the bullying out of sight, which makes it harder for teachers to notice and stop it."
+  },
+  {
+    "id": "phones-attack-nolink",
+    "label": "SAMPLE: touches both points but gives no reasons",
+    "motion_id": "phones",
+    "mode": "attack",
+    "attempt": 1,
+    "expected_break": "no_link",
+    "transcript": "Their first point is wrong. Phones are not bad, everyone has a phone now. And bullying happens anyway. So we should not ban phones. Phones are the future."
+  },
+  {
+    "id": "phones-defend-switch",
+    "label": "SAMPLE: defends by switching to a new argument",
+    "motion_id": "phones",
+    "mode": "defend",
+    "attempt": 1,
+    "expected_break": "new_argument_while_defending",
+    "transcript": "Okay but phones are really important for safety. If there is an emergency, parents need to call their kids. That is why we cannot ban phones."
+  }
+]

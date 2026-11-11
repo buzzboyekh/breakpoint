@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 120" role="img" aria-label="Breakpoint logo: a chain line that breaks, with the wordmark">
+  <rect width="560" height="120" fill="#0b0c0e"/>
+  <!-- the chain: three links, the third breaks -->
+  <line x1="24" y1="60" x2="88" y2="60" stroke="#eceef1" stroke-width="6" stroke-linecap="round"/>
+  <line x1="100" y1="60" x2="128" y2="60" stroke="#eceef1" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="148" cy="60" r="7" fill="#ff6a3d"/>
+  <line x1="168" y1="60" x2="184" y2="60" stroke="#eceef1" stroke-width="6" stroke-linecap="round" opacity="0.45"/>
+  <text x="208" y="76" font-family="Geist, Inter, system-ui, sans-serif" font-size="46" font-weight="600" letter-spacing="-1" fill="#eceef1">breakpoint</text>
+</svg>
