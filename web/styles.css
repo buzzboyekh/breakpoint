@@ -356,3 +356,11 @@ input[aria-invalid="true"] { border-color: var(--text); border-style: dashed; }
 .rp-hint q { font-size: 28px; }
 .rp-strip { padding: 14px 24px 16px; }
 .screen { padding-top: 14px; padding-bottom: 20px; }
+
+/* design pass fixes (20:05) */
+.hw-subs.is-hero { gap: 10px; }
+.hw-subs.is-hero li { font-size: 20px; line-height: 1.35; font-weight: 500; }
+.hw-subs.is-hero li .chip { font-size: 15px; height: 30px; }
+.hw-item { padding: 22px 26px; }
+.hw-item-title { font-size: 14px; color: var(--text-2); }
+.lp { display: block; margin-bottom: 4px; }

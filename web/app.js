@@ -456,6 +456,23 @@
     if (location.hash !== motionHash() && state.motions.length) history.replaceState(null, '', motionHash());
   }
 
+  function updateTopbar(name) {
+    const crumb = $('#crumb'), who = $('#who');
+    if (!crumb || !who) return;
+    const m = currentMotion();
+    const hw = state.assignment && state.student;
+    const n = name === 'report' || name === 'second' ? (state.attempts.length || 1) : (state.live ? state.live.attempt : 1);
+    if (hw && m && name !== 'coach' && name !== 'motion') {
+      crumb.textContent = 'Homework · ' + motionShort(m, null) + ' · Try ' + n;
+      $('#who-initial').textContent = state.student.charAt(0).toUpperCase();
+      $('#who-name').textContent = state.student;
+      who.hidden = false;
+    } else {
+      crumb.textContent = hw && m ? 'Homework · ' + motionShort(m, null) : '';
+      if (hw) { $('#who-initial').textContent = state.student.charAt(0).toUpperCase(); $('#who-name').textContent = state.student; who.hidden = false; } else who.hidden = true;
+    }
+  }
+
   function show(name) {
     const prev = state.screen;
     state.screen = name;
@@ -473,6 +490,7 @@
       if (coach === (name === 'coach')) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
     document.title = name === 'coach' ? 'Breakpoint · Coach view' : 'Breakpoint';
+    updateTopbar(name);
     if (prev !== name) {
       window.scrollTo(0, 0);
       const main = $('#main');
@@ -534,7 +552,7 @@
     const go = needName ? null : h('div', { class: 'go' },
       h('div', { class: 'ring', 'aria-hidden': 'true' }, '1:00'),
       startBtn,
-      hwk ? null : h('button', { type: 'button', class: 'btn ghost', onclick: startRecorded }, T.recorded),
+      hwk ? null : h('button', { type: 'button', class: 'btn btn-text', onclick: startRecorded }, T.recorded),
       (!hwk && state.motions.length > 1) ? h('button', { type: 'button', class: 'btn btn-text', id: 'btn-new-motion', 'aria-expanded': String(state.pickerOpen), 'aria-controls': 'motion-picker', onclick: togglePicker }, T.newMotion) : null,
       mode === 'attack' ? h('span', { class: 'help' }, T.prep) : null);
 
@@ -552,7 +570,7 @@
     let side = null;
     if (needName) {
       // homework link: ask for a first name once, then start that motion and mode
-      const input = h('input', { id: 'hw-name', type: 'text', name: 'given-name', autocomplete: 'given-name', maxlength: '30', placeholder: T.hwNamePh, required: true, 'aria-describedby': 'hw-name-help' });
+      const input = h('input', { id: 'hw-name', type: 'text', name: 'given-name', autocomplete: 'given-name', maxlength: '30', placeholder: T.hwNamePh, required: true, 'aria-labelledby': 'hw-name-label', 'aria-describedby': 'hw-name-help' });
       side = h('aside', { class: 'panel entry', 'aria-label': T.hwEyebrow },
         h('span', { class: 'label' }, T.hwEyebrow),
         h('h2', null, "Who's practising?"),
@@ -567,7 +585,7 @@
             startLive();
           }
         },
-          h('label', { for: 'hw-name', class: 'field-label' }, T.hwName),
+          h('label', { for: 'hw-name', id: 'hw-name-label', class: 'field-label' }, T.hwName),
           input,
           h('p', { class: 'small', id: 'hw-name-help' }, T.hwNameHelper),
           h('button', { type: 'submit', class: 'btn primary', style: { 'justify-self': 'start' } }, T.hwStart)),
@@ -714,7 +732,7 @@
       return;
     }
     if (state.mode === 'challenge') { add(el, [T.theChallenge + ': ', h('b', null, textOf(m.challenge))]); return; }
-    argsOf(m).forEach((a, i) => { if (i) el.append(' · '); add(el, [T.point(i + 1) + ': ', h('b', null, a.claim)]); });
+    argsOf(m).forEach((a, i) => { add(el, [h('span', { class: 'lp' }, T.point(i + 1) + ': ', h('b', null, a.claim))]); });
   }
 
   async function beginLive(L) {
@@ -1208,7 +1226,7 @@
         [1, 2, 3].map((k) => h('span', { class: 'dot' + (k <= n ? ' on' : '') })),
         h('span', { class: 'tries-l' }, done ? 'Try ' + n + ' · it holds' : 'Try ' + n + ' · fix it in your own words')),
       h('p', { class: 'why-ask' }, 'We ask instead of telling. Tutors that hand over answers can leave students worse off once the tool is gone (Bastani et al., ', h('i', null, 'PNAS'), ', 2025).'),
-      h('div', { class: 'actions' }, primary, again, heardBtn));
+      h('div', { class: 'actions' }, primary, again));
 
     const delivery = a.body ? deliveryView(a.body, { sample: a.sampleBody }) : null;
 
@@ -1598,7 +1616,7 @@
       const top = Object.keys(firsts).sort((x, y) => firsts[y] - firsts[x])[0];
       box.append(h('section', { class: 'card hw-item' },
         h('h2', { class: 'hw-item-title' }, T.hwHeader(motionShort(motionById(a.motion_id), a), subs.length)),
-        subs.length ? h('ul', { class: 'hw-subs' }, subs.map((s) => h('li', null, submissionLine(s)))) : null,
+        subs.length ? h('ul', { class: 'hw-subs is-hero' }, subs.map((s) => h('li', null, submissionLine(s)))) : null,
         top ? h('p', { class: 'hw-foot' }, T.hwFirstBreak(shortLabel(top), firsts[top])) : null));
     });
   }
