@@ -1116,7 +1116,7 @@
     return argsOf(motion).map((arg, i) => {
       const mine = attacks.filter((x) => x.arg === arg.id);
       const best = mine.find((x) => x.holds) || mine[0] || null;
-      const isBreak = !unsure && type !== 'none' && (brk.arg === arg.id || both);
+      const isBreak = !unsure && type !== 'none' && type !== 'not_a_rebuttal' && (brk.arg === arg.id || both);
       const dropped = isBreak && type === 'dropped_argument';
       const d = { '--d': (anim ? 250 + i * 450 : 0) + 'ms' };
       const their = h('div', { class: 'their' },
@@ -1166,8 +1166,9 @@
     let h1;
     if (unsure) h1 = h('h1', { class: 'is-unsure' }, T.lowConf);
     else if (none) h1 = h('h1', null, T.titleHolds);
+    else if (type === 'not_a_rebuttal') h1 = h('h1', { class: 'is-unsure' }, brk.label);
     else h1 = h('h1', null, T.titleBroke, h('span', { class: 'ember big', 'aria-hidden': 'true' }));
-    const sub = hasText(r.landed) ? r.landed.trim() : '';
+    const sub = type === 'not_a_rebuttal' ? (brk.why || '') : (hasText(r.landed) ? r.landed.trim() : '');
 
     let chainBox = null;
     let body;

@@ -865,7 +865,7 @@ def _t_why(ctx, b, attacks, covered):
     if t == "dropped_argument":
         idx = ctx.ids.index(b["arg"])
         if b.get("both"):
-            return 'You never answered either of their points; you said "%s" instead.' % head
+            return "Neither of their points has an answer yet."
         other = next((i for i in ctx.ids if i in covered), None)
         if other:
             return 'You answered their %s point ("%s"), but their %s point is still standing.' % (
@@ -933,7 +933,7 @@ def _t_landed(ctx, attacks):
     s = _strongest(ctx, attacks)
     if s:
         return 'You gave a real reason, not just a no: "%s".' % _short(s["quote"], 12)
-    return 'You took a clear side from your first words: "%s".' % _short(ctx.tr.head(8), 8)
+    return ""   # nothing landed yet: say nothing rather than invent praise (QA, 19:40)
 
 
 # ====================================================================== result
@@ -1013,6 +1013,10 @@ def _build(ctx, obj):
     why = why if (not over and not why_bad) else _t_why(ctx, b, attacks, covered)
     hint = obj.get("hint")
     hint = hint.strip() if (not over and isinstance(hint, str) and not _hint_problems(hint)) else _t_hint(ctx, b)
+    if b["type"] == "none":
+        hint = ("What would they say back to your defence, and how would you answer it?" if ctx.mode == "defend"
+                else "Which of your answers matters more to the judge, and why?" if len(ctx.ids) > 1
+                else "What would they say back, and how would you answer it?")
     landed = obj.get("landed")
     if over and _strongest(ctx, attacks):
         landed = _t_landed(ctx, attacks)
@@ -1034,6 +1038,8 @@ def _build(ctx, obj):
     if (b["type"] == "dropped_argument" and not over and b.get("arg")
             and not _kw_hit(ctx.tr.words, ctx.kw.get(b["arg"]))):
         conf = max(conf, 0.85)   # judge and code agree, and the speech never names that point
+    if b["type"] == "none" and not over and len(ctx.tr.words) >= 20:
+        conf = max(conf, 0.85)   # judge and code agree: every point answered, no failing link
     if len(ctx.tr.words) < 8:
         conf = min(conf, 0.5)
 
@@ -1191,15 +1197,71 @@ def _replay_result(sample, ctx, t0):
 
 
 # ====================================================================== entry point
+
+# ====================================================================== gentle pre-check (lead, QA 19:40)
+_CJK = re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af\u0e00-\u0e7f\u1000-\u109f]")
+_DOWN = re.compile(r"\b(stupid|dumb|idiot|hate (this|it|myself)|can'?t do (this|it)|give up|i'?m (bad|terrible|useless)|"
+                   r"i don'?t know what to say|i quit|so hard)\b", re.I)
+
+
+def _gentle(req, t0):
+    """A kind, fixed reply for speech that is not a rebuttal yet. Never quotes the student, never praises."""
+    raw = str((req or {}).get("transcript") or "")
+    line = None
+    if _CJK.search(raw) and len(_CJK.findall(raw)) >= max(2, len(raw.strip()) // 4):
+        line = ("Try that again in English", "This practice listens for English. Take a breath and say it again in English.")
+    return line
+
+
+def _gentle_result(ctx, label, why, t0, extra=""):
+    res = {
+        "attempt": ctx.attempt, "mode": ctx.mode, "attacks": [],
+        "links": [{"arg": a, "link": l, "status": "untouched"} for a in ctx.ids for l in LINKS],
+        "break": {"type": "not_a_rebuttal", "arg": None, "link": None, "label": label, "why": (why + " " + extra).strip()},
+        "hint": "What is the first thing they said that you disagree with?",
+        "landed": "", "confidence": 0.9, "model_answer": None,
+        "source": "rule", "model": "no model needed", "tokens": {"in": 0, "out": 0},
+        "ms": int((time.time() - t0) * 1000),
+    }
+    return res
+
+
+def _not_a_rebuttal(ctx):
+    """(label, why, extra) when the speech is a put-down or has nothing on topic in a short take; else None."""
+    words = ctx.tr.words
+    kws = []
+    for aid in ctx.ids:
+        kws += list(ctx.kw.get(aid) or [])
+    kws += list(ctx.kw.get("attack") or [])
+    on_topic = _kw_hit(words, kws) or any(_ordinal_ref(words, i) for i in range(len(ctx.ids)))
+    down = bool(_DOWN.search(ctx.transcript))
+    if down and not on_topic:
+        return ("That didn't sound like a rebuttal yet", "Want to try their first point?",
+                "If this feels hard, that's normal: ask your coach.")
+    if not on_topic and len(words) < 25:
+        return ("That didn't sound like a rebuttal yet", "Want to try their first point?", "")
+    return None
+
+
 def analyze(req):
     """AnalyzeRequest dict -> AnalyzeResult dict, or {"error": "..."} (never raises)."""
     global last_trace
     last_trace = {"calls": []}
     t0 = time.time()
+    g = _gentle(req, t0)
+    if g:   # non-English speech: answer kindly instead of failing
+        r2 = dict(req); r2["transcript"] = "not english"
+        try:
+            return _gentle_result(_prepare(r2), g[0], g[1], t0)
+        except BadRequest as e:
+            return {"error": str(e)}
     try:
         ctx = _prepare(req)
     except BadRequest as e:
         return {"error": str(e)}
+    nr = _not_a_rebuttal(ctx)
+    if nr:
+        return _gentle_result(ctx, nr[0], nr[1], t0, nr[2])
     sample = _match_sample(ctx)
     if sample and isinstance(req, dict) and req.get("replay") is True:
         rr = _replay_result(sample, ctx, t0)
