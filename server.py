@@ -19,6 +19,7 @@ DATA = ROOT / "data"
 DATA.mkdir(exist_ok=True)
 ATTEMPTS = DATA / "attempts.json"
 ASSIGNMENTS = DATA / "assignments.json"
+TAKEHOME = DATA / "takehome.json"
 PORT = int(os.environ.get("PORT", "8765"))
 
 sys.path.insert(0, str(ROOT))
@@ -26,9 +27,41 @@ try:
     from engine import analyze as engine_analyze  # owned by the api stream
     from engine import motions as engine_motions
     from engine import gmi as engine_gmi
+    from engine import office_hours as engine_office_hours
 except Exception as e:  # the engine is still being written: keep the server up
     print(f"engine not ready yet: {e}", file=sys.stderr)
-    engine_analyze = engine_motions = engine_gmi = None
+    engine_analyze = engine_motions = engine_gmi = engine_office_hours = None
+
+if engine_office_hours and hasattr(engine_office_hours, "check_office_hours"):
+    check_office_hours = engine_office_hours.check_office_hours
+    should_go_to_office_hours = engine_office_hours.should_go_to_office_hours
+    office_hours_reason = engine_office_hours.office_hours_reason
+else:
+    def check_office_hours(attempt_or_num, break_type=None, confidence=None):
+        if isinstance(attempt_or_num, dict):
+            attempt_num = attempt_or_num.get("attempt") or 1
+            res = attempt_or_num.get("result") or {}
+            brk_obj = res.get("break") or {}
+            brk = brk_obj.get("type") if isinstance(brk_obj, dict) else str(brk_obj)
+            conf = res.get("confidence")
+        else:
+            attempt_num = attempt_or_num or 1
+            brk = break_type
+            conf = confidence
+        is_fixed = brk in (None, "none", "")
+        if attempt_num >= 2 and not is_fixed:
+            return True, "Not fixed in 2 tries"
+        if conf is not None and conf < 0.6:
+            return True, "The AI wasn't sure"
+        return False, None
+
+    def should_go_to_office_hours(attempt_or_num, break_type=None, confidence=None):
+        should_go, _ = check_office_hours(attempt_or_num, break_type, confidence)
+        return should_go
+
+    def office_hours_reason(attempt_or_num, break_type=None, confidence=None):
+        _, reason = check_office_hours(attempt_or_num, break_type, confidence)
+        return reason
 
 _lock = threading.Lock()
 
@@ -44,15 +77,26 @@ CONTENT_TYPES = {
 SAMPLE_CLASS = {
     "students": [
         {"name": "SAMPLE Student A", "last_break": "dropped_argument", "tries": 3},
-        {"name": "SAMPLE Student B", "last_break": "no_link", "tries": 2},
+        {"name": "SAMPLE Student B", "last_break": "no_link", "tries": 2,
+         "said": "My dad said phones help him in meetings but distract him at dinner.", "changed": "A little"},
         {"name": "SAMPLE Student C", "last_break": "dropped_argument", "tries": 4},
         {"name": "SAMPLE Student D", "last_break": "new_argument_while_defending", "tries": 1},
         {"name": "SAMPLE Student E", "last_break": "number_without_so_what", "tries": 2},
-        {"name": "SAMPLE Student F", "last_break": "none", "tries": 2},
+        {"name": "SAMPLE Student F", "last_break": "none", "tries": 2,
+         "said": "My sister said she uses focus mode to study without notifications.", "changed": "Yes"},
     ],
     "breaks": {"dropped_argument": 9, "no_link": 4, "new_argument_while_defending": 3,
                "number_without_so_what": 2, "missed_the_attack": 1},
     "total": 14,
+    "took_home_count": 2,
+    "office_hours": [
+        {"id": "sample-oh-1", "student": "Student B", "name": "SAMPLE Student B", "motion_id": "phones",
+         "motion": "Phones in class", "break_label": "No link", "tries": 2,
+         "reason": "Not fixed in 2 tries", "sample": True},
+        {"id": "sample-oh-2", "student": "Student D", "name": "SAMPLE Student D", "motion_id": "phones",
+         "motion": "Phones in class", "break_label": "Switched arguments while defending", "tries": 1,
+         "reason": "The AI wasn't sure", "sample": True},
+    ]
 }
 
 
@@ -67,6 +111,19 @@ def save_attempts(items):
     tmp = ATTEMPTS.with_suffix(".tmp")
     tmp.write_text(json.dumps(items, ensure_ascii=False, indent=1))
     os.replace(tmp, ATTEMPTS)
+
+
+def load_takehomes():
+    try:
+        return json.loads(TAKEHOME.read_text())
+    except Exception:
+        return []
+
+
+def save_takehomes(items):
+    tmp = TAKEHOME.with_suffix(".tmp")
+    tmp.write_text(json.dumps(items, ensure_ascii=False, indent=1))
+    os.replace(tmp, TAKEHOME)
 
 
 def load_assignments():
@@ -149,21 +206,61 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(404, {"error": "assignment not found"})
         if path.startswith("/a/"):  # a shareable assignment link opens the app with that assignment
             return self._static("/index.html")
+        if path == "/api/takehome":
+            with _lock:
+                items = load_takehomes()
+            return self._json(200, items)
         if path == "/api/class":
             with _lock:
                 items = load_attempts()
+                takehomes = load_takehomes()
             data = json.loads(json.dumps(SAMPLE_CLASS))
             for a in items:
                 b = ((a.get("result") or {}).get("break") or {}).get("type")
                 if b:
                     data["breaks"][b] = data["breaks"].get(b, 0) + 1
                     data["total"] += 1
-            data["review"] = [
-                {"id": a["id"], "transcript": a.get("transcript", ""), "result": a.get("result"),
-                 "verdict": a.get("verdict")}
-                for a in items
-                if (a.get("result") or {}).get("confidence", 1) < 0.6 and not a.get("verdict")
-            ]
+
+            # Attach student takehome responses
+            for th in takehomes:
+                stu_name = th.get("student") or "Student"
+                found = next((s for s in data["students"] if s.get("name") == stu_name), None)
+                if found:
+                    found["said"] = th.get("said")
+                    found["changed"] = th.get("changed")
+                else:
+                    data["students"].append({
+                        "name": stu_name,
+                        "last_break": "none",
+                        "tries": 1,
+                        "said": th.get("said"),
+                        "changed": th.get("changed")
+                    })
+            data["took_home_count"] = sum(1 for s in data["students"] if s.get("said"))
+
+            # Build office hours queue using the office-hours rule
+            oh_items = []
+            for a in items:
+                should_go, reason = check_office_hours(a)
+                if should_go and not a.get("verdict"):
+                    res = a.get("result") or {}
+                    brk = res.get("break") or {}
+                    mid = a.get("motion_id") or "phones"
+                    oh_items.append({
+                        "id": a["id"],
+                        "student": (a.get("student") or "You").split()[0],
+                        "name": a.get("student") or "You",
+                        "motion_id": mid,
+                        "motion": mid,
+                        "break_label": brk.get("label") or brk.get("type") or "none",
+                        "tries": a.get("attempt") or 1,
+                        "reason": reason,
+                        "transcript": a.get("transcript", ""),
+                        "result": res,
+                        "verdict": a.get("verdict")
+                    })
+            data["office_hours"] = oh_items if oh_items else data.get("office_hours", [])
+            data["review"] = data["office_hours"]
             data["mine"] = items[-10:]
             return self._json(200, data)
         return self._static(path)
@@ -207,6 +304,21 @@ class Handler(BaseHTTPRequestHandler):
                 save_assignments(items[-200:])
             host = self.headers.get("Host") or f"127.0.0.1:{PORT}"
             return self._json(200, {**item, "url": f"http://{host}/a/{item['id']}"})
+        if path == "/api/takehome":
+            with _lock:
+                items = load_takehomes()
+                item = {
+                    "id": uuid.uuid4().hex[:10],
+                    "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "assignment_id": body.get("assignment_id"),
+                    "student": (body.get("student") or "You")[:40],
+                    "motion_id": body.get("motion_id") or "",
+                    "said": (body.get("said") or "")[:2000],
+                    "changed": (body.get("changed") or "")[:20]
+                }
+                items.append(item)
+                save_takehomes(items[-200:])
+            return self._json(200, {"ok": True, "id": item["id"]})
         if path == "/api/review":
             with _lock:
                 items = load_attempts()

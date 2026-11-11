@@ -276,6 +276,24 @@ input[aria-invalid="true"] { border-color: var(--text); border-style: dashed; }
 .r-quote { color: var(--text-2); font-size: 14px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .review-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .review-done { color: var(--text-2); font-size: 14px; }
+.r-motion { font-size: 13px; color: var(--text-2); }
+.r-tries { font-family: var(--mono); }
+.r-reason { font-size: 12px; }
+
+/* ---------- take home question card & coach items ---------- */
+.take-home-card { margin-top: 16px; display: grid; gap: 14px; padding: 22px; }
+.th-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.th-title { font-size: 18px; font-weight: 600; margin: 0; }
+.th-q { font-size: 15px; line-height: 1.5; color: var(--text); margin: 0; font-weight: 500; }
+.th-choices { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.th-choice-btn { height: 38px; padding: 0 16px; font-size: 14px; }
+.th-textarea { width: 100%; border-radius: 8px; border: 1px solid var(--rim); background: rgba(0, 0, 0, 0.25); color: var(--text); padding: 10px 12px; font-family: var(--sans); font-size: 14px; resize: vertical; margin-top: 6px; box-sizing: border-box; }
+.th-textarea:focus { outline: none; border-color: var(--rim-strong); }
+.th-actions { display: flex; gap: 10px; align-items: center; margin-top: 4px; }
+.th-saved, .th-skipped { display: grid; gap: 10px; }
+.th-ans { font-size: 14px; color: var(--text-2); font-style: italic; margin: 0; }
+.took-home-badge { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; color: var(--text-2); border: 1px solid var(--rim); border-radius: 6px; padding: 2px 8px; }
+.s-takehome { font-size: 13px; color: var(--text-2); font-style: italic; margin: 4px 0 0; line-height: 1.4; }
 .hw-card { display: grid; gap: 16px; }
 .hw-create { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .hw-create .help { font-size: 13px; }

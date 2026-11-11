@@ -40,7 +40,8 @@
     slow: 'The judge is thinking a bit longer…',
     judgeError: "The judge couldn't answer this time.",
     useRecorded: 'Use the recorded example',
-    lowConf: 'Not sure about this one. Check with your coach.',
+    lowConf: 'Your coach will go through this one with you.',
+    coachLine: 'Your coach will go through this one with you.',
     secondTitle: 'Second try',
     fixed: (n) => 'Fixed in ' + n + ' tries.',
     closer: 'Closer. One more try?',
@@ -51,8 +52,10 @@
     coachTitle: 'Your class this week',
     sample: 'SAMPLE',
     mostCommon: 'Most common break',
-    review: 'Needs your review',
-    reviewHelper: "The AI asks you when it isn't sure.",
+    review: 'Office hours',
+    officeHours: 'Office hours',
+    reviewHelper: "Students who need a check-in with you.",
+    officeHoursHelper: "Students who need a check-in with you.",
     agree: 'Agree',
     disagree: 'Disagree',
     // Homework (copy.md "Homework link", "Student entry", "Coach view")
@@ -242,14 +245,40 @@
     attack_on_you: {
       target: 'Phones help students learn: they can look things up the moment they get stuck.',
       attack: "Students don't look things up. The moment the teacher turns around, they open games and group chats."
-    }
+    },
+    take_home: "Ask someone at home: when did a phone help you learn something, and when did it get in the way?"
   }];
 
-  // SAMPLE review items for the coach view when the real queue is empty (never real students).
-  const SAMPLE_REVIEW = [
-    { id: 'sample-review-1', name: 'SAMPLE Student B', sample: true, transcript: SAMPLE_TRANSCRIPTS[2].transcript, result: { break: { type: 'no_link', label: 'No link' }, confidence: 0.52 } },
-    { id: 'sample-review-2', name: 'SAMPLE Student D', sample: true, transcript: SAMPLE_TRANSCRIPTS[3].transcript, result: { break: { type: 'new_argument_while_defending', label: 'Switched arguments while defending' }, confidence: 0.47 } }
+  // SAMPLE office hours items for the coach view when the real queue is empty (never real students).
+  const SAMPLE_OFFICE_HOURS = [
+    {
+      id: 'sample-oh-1',
+      student: 'Student B',
+      name: 'SAMPLE Student B',
+      motion: 'Phones in class',
+      motion_id: 'phones',
+      break_label: 'No link',
+      tries: 2,
+      reason: 'Not fixed in 2 tries',
+      sample: true,
+      transcript: SAMPLE_TRANSCRIPTS[2].transcript,
+      result: { break: { type: 'no_link', label: 'No link' }, confidence: 0.8 }
+    },
+    {
+      id: 'sample-oh-2',
+      student: 'Student D',
+      name: 'SAMPLE Student D',
+      motion: 'Phones in class',
+      motion_id: 'phones',
+      break_label: 'Switched arguments while defending',
+      tries: 1,
+      reason: "The AI wasn't sure",
+      sample: true,
+      transcript: SAMPLE_TRANSCRIPTS[3].transcript,
+      result: { break: { type: 'new_argument_while_defending', label: 'Switched arguments while defending' }, confidence: 0.47 }
+    }
   ];
+  const SAMPLE_REVIEW = SAMPLE_OFFICE_HOURS;
 
   // ---------------------------------------------------------------- state
   const state = {
@@ -1170,6 +1199,98 @@
     });
   }
 
+  function takeHomeCard(motion, attempt) {
+    const q = (motion && motion.take_home) || 'Ask someone at home: when did a phone help you learn something, and when did it get in the way?';
+    const card = h('section', { class: 'panel take-home-card', 'aria-labelledby': 'th-title' });
+    let saidText = '';
+    let changedVal = '';
+    let status = 'idle'; // 'idle' | 'saving' | 'saved' | 'skipped'
+    let errorMsg = '';
+
+    function paint() {
+      card.textContent = '';
+      if (status === 'skipped') {
+        card.append(h('div', { class: 'th-skipped' },
+          h('span', { class: 'muted' }, 'Take-home question skipped for now.'),
+          h('button', { type: 'button', class: 'btn ghost btn-sm', onclick: () => { status = 'idle'; paint(); } }, 'Open question')));
+        return;
+      }
+      if (status === 'saved') {
+        card.append(h('div', { class: 'th-saved', role: 'status' },
+          h('div', { class: 'th-head' },
+            h('span', { class: 'chip chip-hold' }, h('span', { class: 'tick', 'aria-hidden': 'true' }), 'Saved'),
+            h('h2', { id: 'th-title', class: 'th-title' }, 'Take it home')),
+          h('p', { class: 'th-q' }, q),
+          saidText ? h('p', { class: 'th-ans' }, '“' + saidText + '”') : null,
+          changedVal ? h('p', { class: 'muted' }, 'Did it change your view? ' + changedVal) : null));
+        return;
+      }
+
+      const choices = ['No', 'A little', 'Yes'];
+      const choiceGroup = h('div', { class: 'th-choices', role: 'group', 'aria-label': 'Did it change your view?' },
+        choices.map((c) => h('button', {
+          type: 'button',
+          class: 'btn ' + (changedVal === c ? 'primary' : 'ghost') + ' th-choice-btn',
+          'aria-pressed': String(changedVal === c),
+          onclick: () => { changedVal = c; paint(); }
+        }, c)));
+
+      const textarea = h('textarea', {
+        id: 'th-said',
+        class: 'th-textarea',
+        rows: 3,
+        placeholder: 'Type what they told you…',
+        oninput: (e) => { saidText = e.target.value; }
+      });
+      textarea.value = saidText;
+
+      async function saveTakeHome() {
+        if (status === 'saving') return;
+        status = 'saving';
+        errorMsg = '';
+        paint();
+        try {
+          await postJSON('/api/takehome', {
+            assignment_id: state.assignment ? state.assignment.id : null,
+            student: (state.assignment && state.student) ? state.student : (state.student || 'You'),
+            motion_id: (motion && motion.id) || state.motionId,
+            said: saidText.trim(),
+            changed: changedVal
+          }, 8000);
+          status = 'saved';
+        } catch (err) {
+          status = 'idle';
+          errorMsg = "Couldn't save right now. Try again.";
+        }
+        paint();
+      }
+
+      function skipTakeHome() {
+        status = 'skipped';
+        paint();
+      }
+
+      add(card, [
+        h('div', { class: 'th-head' },
+          h('h2', { id: 'th-title', class: 'th-title' }, 'Take it home')),
+        h('p', { class: 'th-q' }, q),
+        h('div', { class: 'field' },
+          h('label', { for: 'th-said', class: 'field-label' }, 'What did they say?'),
+          textarea),
+        h('div', { class: 'field' },
+          h('span', { class: 'field-label' }, 'Did it change your view?'),
+          choiceGroup),
+        errorMsg ? h('p', { class: 'hw-error', role: 'alert' }, errorMsg) : null,
+        h('div', { class: 'th-actions' },
+          h('button', { type: 'button', class: 'btn primary', 'aria-busy': status === 'saving' ? 'true' : null, onclick: saveTakeHome }, 'Save'),
+          h('button', { type: 'button', class: 'btn ghost', onclick: skipTakeHome }, 'Skip for now'))
+      ]);
+    }
+
+    paint();
+    return card;
+  }
+
   function reportView(a) {
     const r = a.result;
     const brk = r.break || {};
@@ -1182,7 +1303,7 @@
     const useRows = a.mode !== 'defend' && argsOf(motion).length > 0 && !(motion && motion.kind === 'challenge');
 
     let h1;
-    if (unsure) h1 = h('h1', { class: 'is-unsure' }, T.lowConf);
+    if (unsure) h1 = h('h1', { class: 'is-unsure' }, T.coachLine);
     else if (none) h1 = h('h1', null, T.titleHolds);
     else if (type === 'not_a_rebuttal') h1 = h('h1', { class: 'is-unsure' }, brk.label);
     else h1 = h('h1', null, T.titleBroke, h('span', { class: 'ember big', 'aria-hidden': 'true' }));
@@ -1237,7 +1358,8 @@
           h('div', { class: 'badges' },
             a.recorded ? h('span', { class: 'badge' }, T.recorded) : null,
             n > 1 ? h('span', { class: 'badge' }, 'Try ' + n) : null)),
-        body, heard),
+        body, heard,
+        done ? takeHomeCard(motion, a) : null),
       side,
       delivery,
       h('footer', { class: 'rp-foot' }, h('span', null, footerText(r)), a.recorded && r.source !== 'replay' ? h('span', null, T.recorded + ' · sample speech') : null));
@@ -1435,9 +1557,10 @@
     const unsure = isUnsure(r2);
     const firstHeld = breakType(r1) === 'none';
     const motion = motionById(latest.motionId) || currentMotion();
+    const ruleFired = unsure || (!fixed && n >= 2);
 
     let big;
-    if (unsure) big = h('div', { class: 'big' }, h('b', null, T.lowConf));
+    if (ruleFired) big = h('div', { class: 'big' }, h('b', null, T.coachLine));
     else if (fixed && !firstHeld) big = h('div', { class: 'big' }, h('b', null, T.fixed(n)), argsOf(motion).length > 1 && latest.mode !== 'defend' ? ' Both points answered.' : '');
     else if (fixed) big = h('div', { class: 'big' }, h('b', null, T.titleHolds));
     else big = h('div', { class: 'big' }, h('b', null, T.closer));
@@ -1471,6 +1594,7 @@
       h('div', { class: 'rt-cols' },
         tryColumn(motion, first, 1, false, null),
         tryColumn(motion, latest, n, true, first.body)),
+      takeHomeCard(motion, latest),
       h('div', { class: 'rt-bottom' }, h('span', { class: 'note' }, noteText), h('div', { class: 'btns' }, btns)),
       model,
       fixed ? null : h('footer', { class: 'rp-foot' }, h('span', null, footerText(r2)))));
@@ -1621,6 +1745,12 @@
     });
   }
 
+  function firstName(s) {
+    if (!s) return 'Student';
+    const clean = String(s).replace(/^SAMPLE\s+/i, '').trim();
+    return clean.split(/\s+/)[0] || 'Student';
+  }
+
   function fillSampleClass(box, data) {
     box.removeAttribute('aria-busy');
     box.textContent = '';
@@ -1642,19 +1772,25 @@
         h('div', { class: 'bar-label' }, h('b', null, shortLabel(e[0])), h('span', { class: 'mono' }, e[1] + ' of ' + total)),
         h('div', { class: 'bar-track', 'aria-hidden': 'true' }, h('div', { class: 'bar-fill', style: { '--w': '0' }, 'data-w': String(e[1] / max) }))))));
 
-    let review = Array.isArray(data.review) ? data.review.filter((x) => x && !x.verdict) : [];
-    if (!review.length) review = SAMPLE_REVIEW;
-    const reviewCard = h('section', { class: 'card', 'aria-labelledby': 'needs-review' },
-      h('h2', { class: 'eyebrow', id: 'needs-review' }, T.review),
-      h('p', { class: 'helper', style: { 'margin-top': '4px' } }, T.reviewHelper),
-      h('ul', { class: 'review-list' }, review.slice(0, 3).map(reviewItem)));
+    let review = Array.isArray(data.office_hours || data.review) ? (data.office_hours || data.review).filter((x) => x && !x.verdict) : [];
+    if (!review.length) review = SAMPLE_OFFICE_HOURS;
+    const reviewCard = h('section', { class: 'card', 'aria-labelledby': 'office-hours' },
+      h('h2', { class: 'eyebrow', id: 'office-hours' }, T.officeHours),
+      h('p', { class: 'helper', style: { 'margin-top': '4px' } }, T.officeHoursHelper),
+      h('ul', { class: 'review-list' }, review.slice(0, 6).map(reviewItem)));
 
+    const tookCount = (data.took_home_count != null) ? data.took_home_count : (data.students || []).filter((s) => hasText(s.said)).length;
     const classCard = h('section', { class: 'card', 'aria-labelledby': 'class-list' },
-      h('div', { class: 'coach-head', style: { 'margin-bottom': '12px' } }, h('h2', { class: 'eyebrow', id: 'class-list' }, T.classList), h('span', { class: 'badge' }, T.sample)),
+      h('div', { class: 'coach-head', style: { 'margin-bottom': '12px' } },
+        h('h2', { class: 'eyebrow', id: 'class-list' }, T.classList),
+        h('span', { class: 'badge took-home-badge' }, 'Took it home: ' + tookCount),
+        h('span', { class: 'badge' }, T.sample)),
       h('table', { class: 'ctable' },
         h('thead', null, h('tr', null, h('th', { scope: 'col' }, T.colStudent), h('th', { scope: 'col' }, T.colBreak), h('th', { scope: 'col', class: 'num' }, T.colTries))),
         h('tbody', null, data.students.map((s) => h('tr', null,
-          h('td', null, s.name || ''),
+          h('td', null,
+            h('div', { class: 's-name' }, s.name || ''),
+            hasText(s.said) ? h('p', { class: 's-takehome' }, '“' + s.said + '”') : null),
           h('td', null, s.last_break === 'none' ? h('span', { class: 'chip chip-hold' }, T.holds) : shortLabel(s.last_break)),
           h('td', { class: 'num' }, s.tries != null ? String(s.tries) : ''))))));
 
@@ -1667,6 +1803,14 @@
   function reviewItem(item) {
     const r = item.result || {};
     const brk = r.break || {};
+    const m = motionById(item.motion_id);
+    const motionName = item.motion || motionShort(m) || item.motion_id || 'Motion';
+    const sName = firstName(item.student || item.name || 'Student');
+    const label = item.break_label || breakLabel(brk, item.mode);
+    const triesCount = item.tries || item.attempt || 1;
+    const triesLabel = triesCount + (triesCount === 1 ? ' try' : ' tries');
+    const reasonLabel = item.reason || (isUnsure(r) ? "The AI wasn't sure" : "Not fixed in 2 tries");
+
     const actions = h('div', { class: 'review-actions' });
     function paintActions() {
       actions.textContent = '';
@@ -1692,9 +1836,13 @@
     paintActions();
     return h('li', { class: 'review-item' },
       h('div', { class: 'r-head' },
-        h('span', { class: 'r-name' }, item.name || item.student || 'You'),
+        h('span', { class: 'r-name' }, sName),
+        h('span', { class: 'r-motion' }, motionName),
         item.sample ? h('span', { class: 'badge' }, T.sample) : null),
-      h('p', { class: 'r-verdict' }, T.aiSaid + ': ', h('span', { class: 'chip chip-break' }, breakLabel(brk, item.mode))),
+      h('p', { class: 'r-verdict' },
+        h('span', { class: 'chip chip-break' }, label),
+        h('span', { class: 'chip chip-standing r-tries' }, triesLabel),
+        h('span', { class: 'chip chip-standing r-reason' }, reasonLabel)),
       hasText(item.transcript) ? h('p', { class: 'r-quote' }, '“' + item.transcript + '”') : null,
       actions);
   }
