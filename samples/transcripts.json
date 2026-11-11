@@ -34,5 +34,14 @@
     "attempt": 1,
     "expected_break": "new_argument_while_defending",
     "transcript": "Okay but phones are really important for safety. If there is an emergency, parents need to call their kids. That is why we cannot ban phones."
+  },
+  {
+    "id": "phones-attack-kun-practice",
+    "label": "Kun's own practice rebuttal (founder, adult; real words, given by dictation 2026-11-11)",
+    "motion_id": "phones",
+    "mode": "attack",
+    "attempt": 1,
+    "expected_break": "dropped_argument",
+    "transcript": "However, you fail to acknowledge that it is not always the case when you fail to acknowledge that there is a teacher actively in the classroom to monitor. But when they notice this, they're obviously going to shut it down if it continues. So in this case, this problem wouldn't be as big as you claim to be. And just like how their phones can be a distraction, other classrooms can be a distraction as well. This is why decades before phones were even made, students were still getting distracted in class. So your argument is invalid."
   }
 ]
