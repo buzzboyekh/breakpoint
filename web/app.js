@@ -1117,7 +1117,7 @@
     const n = state.attempts.indexOf(entry) + 1 || entry.result.attempt || 1;
     postJSON('/api/attempts', {
       result: entry.result, motion_id: entry.motionId, mode: entry.mode, body: entry.body,
-      transcript: entry.transcript, recorded: entry.recorded, attempt: n,
+      transcript: entry.transcript, recorded: entry.recorded, typed: !!entry.typed, attempt: n,
       assignment_id: state.assignment ? state.assignment.id : null,
       student: (state.assignment && state.student) ? state.student : 'You'
     }, 8000).catch((e) => console.warn('attempt not saved:', e && e.message));
@@ -1721,7 +1721,7 @@
 
   function submissionLine(s) {
     const tries = Number(s.tries) || 0;
-    const head = (s.name || 'Student') + ' · ' + T.hwTries(tries);
+    const head = (s.name || 'Student') + ' · ' + T.hwTries(tries) + ' · ' + (s.typed ? 'Typed' : 'Spoken');
     if (!s.first_break) return [head];
     if (s.first_break === 'none') return [head + ' · ' + T.hwHeld];
     const first = shortLabel(s.first_break);

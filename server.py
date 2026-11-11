@@ -153,6 +153,7 @@ def assignment_summary(a, attempts):
         p = people.setdefault(t.get("student") or "Student", {"name": t.get("student") or "Student", "tries": 0,
                                                               "first_break": None, "last_break": None})
         p["tries"] += 1
+        p["typed"] = bool(t.get("typed"))   # how the LAST try was given
         b = ((t.get("result") or {}).get("break") or {}).get("type")
         if p["first_break"] is None:
             p["first_break"] = b
@@ -235,10 +236,12 @@ class Handler(BaseHTTPRequestHandler):
                     found["said"] = th.get("said")
                     found["changed"] = th.get("changed")
                 else:
+                    mine = [x for x in items if x.get("student") == stu_name]
+                    lb = ((mine[-1].get("result") or {}).get("break") or {}).get("type") if mine else None
                     data["students"].append({
                         "name": stu_name,
-                        "last_break": "none",
-                        "tries": 1,
+                        "last_break": lb,
+                        "tries": len(mine),
                         "said": th.get("said"),
                         "changed": th.get("changed")
                     })
@@ -246,7 +249,10 @@ class Handler(BaseHTTPRequestHandler):
 
             # Build office hours queue using the office-hours rule
             oh_items = []
-            for a in items:
+            last_by = {}
+            for a in items:   # later rows replace earlier ones: only a student's last attempt can queue them
+                last_by[(a.get("student"), a.get("motion_id"), a.get("assignment_id"))] = a
+            for a in last_by.values():
                 should_go, reason = check_office_hours(a)
                 if should_go and not a.get("verdict"):
                     res = a.get("result") or {}
@@ -260,6 +266,7 @@ class Handler(BaseHTTPRequestHandler):
                         "motion": mid,
                         "break_label": brk.get("label") or brk.get("type") or "none",
                         "tries": a.get("attempt") or 1,
+                        "typed": bool(a.get("typed")),
                         "reason": reason,
                         "transcript": a.get("transcript", ""),
                         "result": res,
@@ -297,6 +304,7 @@ class Handler(BaseHTTPRequestHandler):
                         "motion_id": body.get("motion_id"), "transcript": body.get("transcript", "")[:5000],
                         "result": body.get("result"), "body": body.get("body"),
                         "assignment_id": body.get("assignment_id"), "attempt": body.get("attempt"),
+                        "typed": bool(body.get("typed")),
                         "student": (body.get("student") or "You")[:40]}
                 items.append(item)
                 save_attempts(items[-200:])
