@@ -8,7 +8,7 @@ Repo name is breakpoint, the working name from the first commit.
 
 <sub>Even with an AI assistant open, a kid still has to show up, say it out loud and answer the follow-up. The practice happens either way.</sub>
 
-▶ Demo video (2 min): {VIDEO_URL}
+▶ Demo video (2 min): https://github.com/buzzboyekh/breakpoint/raw/main/docs/demo.mp4
 
 ![Think Aloud report: the weak spot in an answer](docs/report.png)
 
