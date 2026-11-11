@@ -127,6 +127,21 @@
     cardBookLine: "One-on-one or small-group office hours with the coach, booked from the kid's weak spot.",
     cardCommunityTitle: "Community questions",
     cardCommunityLine: "Homework that sends kids to a real person: a grandparent, a shop owner, a neighbour.",
+    // Status words the coach sees per student (server: submission_status)
+    stNotStarted: 'Not started', stSubmitted: 'Submitted', stFixed: 'Fixed', stHeld: 'Held first time', stNeeds: 'Needs you',
+    liveLabel: 'Live', liveHelper: 'Updates on its own when a student submits.',
+    hwKind: 'Kind of homework',
+    kindSoon: 'Preview',
+    kindSoonHelp: "This kind isn't built yet, so a link can't be made for it.",
+    parentsTab: 'Parents',
+    parentsTitle: 'Parents',
+    parentsSub: 'What each family sees. One calm page per child, first name only, no scores.',
+    parentsNone: 'No parent pages yet.',
+    parentsHow: 'Write a note for a parent under a student in Coach view, and their page appears here.',
+    parentsPick: 'Families',
+    parentsOpen: 'Open the parent page',
+    parentsCopy: 'Copy parent link',
+    parentsSample: 'This is a sample page, so you can see the shape before the first note is written.',
     moreKinds: 'More kinds of homework',
     moreKindsSub: 'Same loop, different practice: say it, fix it, take it to a person.',
     cardPitchTitle: 'Pitch it',
@@ -337,8 +352,11 @@
     student: '',       // first name typed on a homework link
     hw: { motionId: null, mode: 'attack', link: null, busy: false, error: '' },
     nextSelected: 0,
-    nextMoreSelected: null
+    nextMoreSelected: null,
+    kinds: null,       // kinds of homework from /api/kinds
+    parentsPick: null  // token of the family shown on the Parents tab
   };
+  let coachPoll = null;
   let coachToken = 0;
 
   // ---------------------------------------------------------------- helpers
@@ -502,6 +520,7 @@
     if (r.name !== 'live' && state.live) abortLive();
     if (r.name === 'coach') { show('coach'); renderCoach(); return; }
     if (r.name === 'next') { show('next'); renderNext(); return; }
+    if (r.name === 'parents') { show('parents'); renderParents(); return; }
     if (r.name === 'live') {
       if (!state.live) { go('motion', { replace: true }); return; }
       show('live');
@@ -558,11 +577,12 @@
         s.classList.add('is-entering');
       }
     });
+    const navName = (name === 'coach' || name === 'next') ? 'coach' : name === 'parents' ? 'parents' : 'practice';
     $$('.topnav a').forEach((a) => {
-      const coach = a.getAttribute('data-nav') === 'coach';
-      if (coach === (name === 'coach')) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+      if (a.getAttribute('data-nav') === navName) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
-    document.title = name === 'coach' ? 'Think Aloud · Coach view' : name === 'next' ? "Think Aloud · What's next" : 'Think Aloud';
+    if (name !== 'coach' && coachPoll) { clearInterval(coachPoll); coachPoll = null; }
+    document.title = name === 'coach' ? 'Think Aloud · Coach view' : name === 'next' ? "Think Aloud · What's next" : name === 'parents' ? 'Think Aloud · Parents' : 'Think Aloud';
     updateTopbar(name);
     if (prev !== name) {
       window.scrollTo(0, 0);
@@ -632,7 +652,7 @@
     const card = h('section', { class: 'panel mc', 'aria-label': T.eyebrow },
       h('span', { class: 'zhmark', 'aria-hidden': 'true' }, '開口'),
       h('div', { class: 'mc-eyebrow' },
-        h('span', { class: 'label' }, hwk ? T.hwEyebrow : T.eyebrow),
+        h('span', { class: 'label' }, hwk ? T.hwEyebrow + ' · ' + kindLabel(hwk.data && (hwk.data.kind || hwk.data.mode)) : T.eyebrow),
         h('span', { class: 'chip holds' }, T.youArgue(sideLabel(m.side)))),
       h('h1', { class: 'pitch', id: 'pitch-title' }, 'Homework you do out loud.'),
       h('p', { class: 'pitch-sub' }, "AI can write the essay. It can't think out loud for you. Say your answer, get challenged, fix the weak spot, then take the question home."),
@@ -1675,6 +1695,40 @@
     toastTimer = setTimeout(() => { el.classList.remove('is-on'); }, 3000);
   }
 
+  const KIND_FALLBACK = [
+    { id: 'attack', label: 'Answer back', line: "Hear the other side's case and answer it point by point.", live: true },
+    { id: 'defend', label: 'Stand your ground', line: 'Your point gets attacked; keep it standing.', live: true },
+    { id: 'challenge', label: 'Answer a challenge', line: 'One hard question about your own view.', live: true },
+    { id: 'pitch', label: 'Pitch it', line: 'Sell an idea in 60 seconds to someone who doubts it.', live: false },
+    { id: 'negotiate', label: 'Negotiate', line: 'Reach a deal with the other side, out loud.', live: false },
+    { id: 'team', label: 'Team case', line: 'Split one case between two speakers.', live: false }
+  ];
+  async function loadKinds() {
+    if (state.kinds) return state.kinds;
+    try { const k = await getJSON('/api/kinds', 6000); state.kinds = Array.isArray(k) && k.length ? k : KIND_FALLBACK; }
+    catch (e) { state.kinds = KIND_FALLBACK; }
+    return state.kinds;
+  }
+  function kindById(id) { return (state.kinds || KIND_FALLBACK).filter((k) => k.id === id)[0] || null; }
+  function kindLabel(id) { const k = kindById(id); return k ? k.label : (id === 'defend' ? T.modeDefend : T.modeAttack); }
+
+  // "just now", "4 min ago", "2 h ago": the server writes local times without a zone
+  function timeAgo(iso) {
+    if (!hasText(iso)) return '';
+    const t = new Date(iso.replace(' ', 'T')).getTime();
+    if (!isFinite(t)) return '';
+    const d = Math.max(0, Math.round((Date.now() - t) / 1000));
+    if (d < 60) return 'just now';
+    if (d < 3600) return Math.round(d / 60) + ' min ago';
+    if (d < 86400) return Math.round(d / 3600) + ' h ago';
+    return Math.round(d / 86400) + ' d ago';
+  }
+  function statusChip(status) {
+    const cls = status === 'Fixed' || status === 'Held first time' ? 'chip chip-hold st-chip'
+      : status === 'Needs you' ? 'chip chip-break st-chip' : 'chip chip-standing st-chip';
+    return h('span', { class: cls }, status);
+  }
+
   async function renderCoach() {
     const root = $('#screen-coach');
     const token = ++coachToken;
@@ -1688,19 +1742,40 @@
         h('h1', { class: 'sr-only' }, 'Coach view'),
         h('nav', { class: 'coach-tabs', 'aria-label': 'Coach navigation' },
           h('span', { class: 'coach-tab is-active', 'aria-current': 'page' }, T.classOverviewTab),
-          h('a', { href: '#next', class: 'coach-tab', onclick: (e) => { e.preventDefault(); go('next'); } }, T.whatsNext)
-        )
+          h('a', { href: '#next', class: 'coach-tab', onclick: (e) => { e.preventDefault(); go('next'); } }, T.whatsNext),
+          h('a', { href: '#parents', class: 'coach-tab', onclick: (e) => { e.preventDefault(); go('parents'); } }, T.parentsTab)
+        ),
+        h('p', { class: 'live-tag', title: T.liveHelper }, h('i', { class: 'ember', 'aria-hidden': 'true' }), T.liveLabel)
       ),
       h('div', { class: 'coach-grid' },
         h('div', { class: 'coach-col' }, homeworkCreateCard(listBox), listBox),
         classBox)));
-    const res = await Promise.all([
-      getJSON('/api/assignments', 8000).catch(() => null),
-      getJSON('/api/class', 8000).catch(() => null)
-    ]);
-    if (token !== coachToken || state.screen !== 'coach') return;
-    fillHomeworkList(listBox, res[0]);
-    fillSampleClass(classBox, res[1]);
+    await loadKinds();
+    if (token !== coachToken) return;
+    const card = root.querySelector('.hw-card');
+    if (card && card.__paint) card.__paint();
+    let seen = '';
+    async function refresh(first) {
+      const res = await Promise.all([
+        getJSON('/api/assignments', 8000).catch(() => null),
+        getJSON('/api/class', 8000).catch(() => null)
+      ]);
+      if (token !== coachToken || state.screen !== 'coach') return;
+      // only repaint when something changed, so the coach's typing in a parent note is never lost
+      const sig = JSON.stringify([res[0], res[1] && res[1].office_hours, res[1] && res[1].students]);
+      if (!first && sig === seen) return;
+      if (!first && document.activeElement && document.activeElement.classList.contains('pn-input')) return;
+      seen = sig;
+      fillHomeworkList(listBox, res[0]);
+      fillSampleClass(classBox, res[1]);
+      if (!first) {
+        const latest = (res[0] || []).map((a) => a.last_at || '').sort().pop();
+        if (latest) announce('Homework updated');
+      }
+    }
+    await refresh(true);
+    if (coachPoll) clearInterval(coachPoll);
+    coachPoll = setInterval(() => { if (state.screen === 'coach' && !document.hidden) refresh(false); }, 4000);
   }
 
   function homeworkCreateCard(listBox) {
@@ -1714,7 +1789,7 @@
       if (!m) return;
       hw.busy = true; hw.error = ''; paint();
       try {
-        const a = await postJSON('/api/assignments', { motion_id: m.id, mode: hw.mode, title: motionShort(m), due: '' }, 8000);
+        const a = await postJSON('/api/assignments', { motion_id: m.id, mode: hw.mode, kind: hw.mode, title: motionShort(m), due: '' }, 8000);
         if (!a || !a.url) throw new Error('no link');
         hw.link = a.url;
       } catch (e) {
@@ -1744,18 +1819,25 @@
     function paint() {
       card.textContent = '';
       const m = motionById(hw.motionId);
-      const modes = availableModes(m).filter((x) => x !== 'challenge');
+      const modes = availableModes(m);
       if (modes.indexOf(hw.mode) < 0) hw.mode = modes[0] || 'attack';
       const select = h('select', { id: 'hw-motion', onchange: (e) => { hw.motionId = e.target.value; hw.link = null; paint(); const s = $('#hw-motion'); if (s) s.focus(); } },
         state.motions.map((mm) => h('option', { value: mm.id, selected: mm.id === hw.motionId }, mm.motion)));
-      const modeCtl = modes.length > 1
-        ? h('div', { class: 'modes', role: 'group', 'aria-labelledby': 'hw-mode-label' }, modes.map((md) =>
-          h('button', { type: 'button', 'aria-pressed': String(md === hw.mode), onclick: () => { hw.mode = md; hw.link = null; paint(); const b = $('.hw-card .modes button[aria-pressed="true"]'); if (b) b.focus(); } }, md === 'defend' ? T.modeDefend : T.modeAttack)))
-        : h('p', { class: 'muted' }, hw.mode === 'defend' ? T.modeDefend : T.modeAttack);
+      // every kind of homework, in one place: live kinds this question supports can be picked; the rest are previews
+      const kinds = state.kinds || KIND_FALLBACK;
+      const kindCtl = h('div', { class: 'kinds', role: 'group', 'aria-labelledby': 'hw-mode-label' }, kinds.map((k) => {
+        const can = k.live && modes.indexOf(k.id) >= 0;
+        const on = k.id === hw.mode;
+        return h('button', {
+          type: 'button', class: 'kind' + (can ? '' : ' is-off'), 'aria-pressed': String(on), 'aria-disabled': can ? null : 'true',
+          title: can ? null : (k.live ? 'Not for this question' : T.kindSoonHelp),
+          onclick: () => { if (!can) { toast(k.live ? 'Pick a question that has this kind.' : T.kindSoonHelp); return; } hw.mode = k.id; hw.link = null; paint(); const b = $('.hw-card .kind[aria-pressed="true"]'); if (b) b.focus(); }
+        }, h('b', null, k.label, k.live ? null : h('span', { class: 'badge kind-soon' }, T.kindSoon)), h('span', null, k.line));
+      }));
       add(card, [
         h('div', { class: 'coach-head' }, h('h2', { id: 'hw-card-title' }, T.hwLinkLabel)),
         h('div', { class: 'field' }, h('label', { for: 'hw-motion', class: 'field-label' }, T.hwMotion), select),
-        h('div', { class: 'field' }, h('span', { class: 'field-label', id: 'hw-mode-label' }, T.hwMode), modeCtl),
+        h('div', { class: 'field' }, h('span', { class: 'field-label', id: 'hw-mode-label' }, T.hwKind), kindCtl),
         h('div', { class: 'hw-create' },
           h('button', { type: 'button', class: 'btn primary', 'aria-busy': hw.busy ? 'true' : null, onclick: createLink }, T.hwCreate),
           h('span', { class: 'help' }, T.hwHelper)),
@@ -1767,18 +1849,23 @@
       ]);
     }
     paint();
+    card.__paint = paint;
     return card;
   }
 
   function submissionLine(s) {
     const tries = Number(s.tries) || 0;
     const head = (s.name || 'Student') + ' · ' + T.hwTries(tries) + ' · ' + (s.typed ? 'Typed' : 'Spoken');
-    if (!s.first_break) return [head];
-    if (s.first_break === 'none') return [head + ' · ' + T.hwHeld];
+    const when = timeAgo(s.last_at);
+    const tail = [' ', statusChip(s.status || (tries ? T.stSubmitted : T.stNotStarted)),
+      when ? h('span', { class: 'st-when' }, when) : null,
+      s.took_home ? h('span', { class: 'badge took-home-badge' }, 'Took it home') : null];
+    if (!s.first_break) return [head].concat(tail);
+    if (s.first_break === 'none') return [head].concat(tail);
     const first = shortLabel(s.first_break);
-    if (s.fixed) return [head + ' · ' + first + ' → ', h('span', { class: 'chip chip-hold' }, T.hwFixed)];
-    if (tries <= 1 || !s.last_break) return [head + ' · ' + first];
-    return [head + ' · ' + first + ' → ' + shortLabel(s.last_break)];
+    if (s.fixed) return [head + ' · ' + first + ' → ' + T.hwFixed].concat(tail);
+    if (tries <= 1 || !s.last_break) return [head + ' · ' + first].concat(tail);
+    return [head + ' · ' + first + ' → ' + shortLabel(s.last_break)].concat(tail);
   }
 
   // Coach side of the parent page: a short note per student per assignment, and the link to send.
@@ -1826,7 +1913,7 @@
       subs.forEach((s) => { if (s.first_break && s.first_break !== 'none') firsts[s.first_break] = (firsts[s.first_break] || 0) + 1; });
       const top = Object.keys(firsts).sort((x, y) => firsts[y] - firsts[x])[0];
       box.append(h('section', { class: 'card hw-item' },
-        h('h2', { class: 'hw-item-title' }, T.hwHeader(motionShort(motionById(a.motion_id), a), subs.length)),
+        h('h2', { class: 'hw-item-title' }, T.hwHeader(motionShort(motionById(a.motion_id), a), subs.length), h('span', { class: 'badge hw-kind' }, kindLabel(a.kind || a.mode))),
         subs.length ? h('ul', { class: 'hw-subs is-hero' }, subs.map((s) => h('li', null, submissionLine(s), parentNoteControl(a.id, s)))) : null,
         top ? h('p', { class: 'hw-foot' }, T.hwFirstBreak(shortLabel(top), firsts[top])) : null));
     });
@@ -1944,12 +2031,76 @@
       root.append(h('div', { class: 'parent' }, h('section', { class: 'card' }, h('p', { class: 'muted' }, T.pBad))));
       return;
     }
+    document.title = T.pTitle(d.first_name);
+    root.append(parentPage(d));
+  }
+
+  const SAMPLE_PARENT = {
+    first_name: 'Amy', question: 'Should middle schools ban phones in class?', tries: 2, how: 'Spoken',
+    weak_spot: 'Answered one of the two points and skipped the other.', outcome: 'Fixed it.', fixed: true,
+    coach_note: 'Amy answered the bullying point well on her second try. Ask her what she would say about distraction.',
+    ask_at_home: { question: 'Ask someone at home: when did a phone help you learn something, and when did it get in the way?', answer: '' },
+    sample: true
+  };
+
+  // The Parents tab: the coach's view of every family page, and the page itself on the right.
+  async function renderParents() {
+    const root = $('#screen-parents');
+    if (!root) return;
+    root.textContent = '';
+    const listBox = h('section', { class: 'panel pf-list', 'aria-busy': 'true', 'aria-labelledby': 'pf-title' }, h('div', { class: 'wait-line', 'aria-hidden': 'true' }));
+    const pageBox = h('div', { class: 'pf-page', 'aria-live': 'polite' });
+    root.append(h('div', { class: 'coach' },
+      h('div', { class: 'coach-bar' },
+        h('nav', { class: 'coach-tabs', 'aria-label': 'Coach navigation' },
+          h('a', { href: '#coach', class: 'coach-tab', onclick: (e) => { e.preventDefault(); go('coach'); } }, T.backToCoach),
+          h('span', { class: 'coach-tab is-active', 'aria-current': 'page' }, T.parentsTab))),
+      h('header', { class: 'next-head' }, h('h1', { class: 'next-heading' }, T.parentsTitle), h('p', { class: 'next-subline' }, T.parentsSub)),
+      h('div', { class: 'coach-grid pf-grid' }, listBox, pageBox)));
+    let rows = null;
+    try { rows = await getJSON('/api/parent-links', 8000); } catch (e) { rows = null; }
+    if (state.screen !== 'parents') return;
+    listBox.removeAttribute('aria-busy');
+    listBox.textContent = '';
+    rows = Array.isArray(rows) ? rows.filter((r) => r && r.view && typeof r.view.first_name === 'string') : [];
+    listBox.append(h('h2', { class: 'eyebrow', id: 'pf-title' }, T.parentsPick));
+    if (!rows.length) {
+      listBox.append(h('p', { class: 'muted' }, T.parentsNone), h('p', { class: 'helper' }, T.parentsHow),
+        h('div', { class: 'state-actions', style: { 'margin-top': '12px' } }, h('button', { type: 'button', class: 'btn ghost', onclick: () => go('coach') }, T.backToCoach.replace(/^←\s*/, ''))));
+      pageBox.append(h('p', { class: 'helper', style: { 'margin': '0 0 8px' } }, h('span', { class: 'badge' }, T.sample), ' ', T.parentsSample), parentPage(SAMPLE_PARENT));
+      return;
+    }
+    if (!rows.some((r) => r.token === state.parentsPick)) state.parentsPick = rows[0].token;
+    function paintPage() {
+      const r = rows.filter((x) => x.token === state.parentsPick)[0] || rows[0];
+      pageBox.textContent = '';
+      const a = state.motions.length ? motionShort(motionById((rows.find((x) => x.token === r.token) || {}).motion_id)) : '';
+      pageBox.append(
+        h('div', { class: 'pf-actions' },
+          h('a', { class: 'btn ghost', href: r.url, target: '_blank', rel: 'noopener' }, T.parentsOpen),
+          h('button', { type: 'button', class: 'btn ghost', onclick: async () => {
+            let ok = false;
+            try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(r.url); ok = true; } } catch (e) { ok = false; }
+            toast(ok ? T.pnCopied : r.url);
+          } }, T.parentsCopy),
+          h('span', { class: 'helper mono' }, r.url)),
+        parentPage(r.view));
+    }
+    listBox.append(h('ul', { class: 'pf-rows' }, rows.map((r) => h('li', null,
+      h('button', { type: 'button', class: 'pf-row' + (r.token === state.parentsPick ? ' is-active' : ''), 'aria-pressed': String(r.token === state.parentsPick),
+        onclick: () => { state.parentsPick = r.token; $$('.pf-row', listBox).forEach((b) => { const on = b.getAttribute('data-token') === r.token; b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on)); }); paintPage(); },
+        'data-token': r.token },
+        h('b', null, r.view.first_name),
+        h('span', { class: 'pf-sub' }, [r.view.outcome, hasText(r.view.coach_note) ? 'Note written' : T.pNoNote, timeAgo(r.at)].filter(Boolean).join(' · ')))))));
+    paintPage();
+  }
+
+  function parentPage(d) {
     const ask = d.ask_at_home || {};
     const section = (id, title, kids) => h('section', { class: 'card pr-card', 'aria-labelledby': id },
       h('h2', { class: 'eyebrow', id: id }, title), kids);
-    document.title = T.pTitle(d.first_name);
     const tries = Number(d.tries) || 0;
-    root.append(h('div', { class: 'parent' },
+    return (h('div', { class: 'parent' },
       h('h1', { class: 'pr-title' }, T.pTitle(d.first_name)),
       section('pr-q', T.pQuestion, h('p', { class: 'pr-big' }, typeof d.question === 'string' ? d.question : '')),
       section('pr-did', T.pDid, tries
@@ -2367,7 +2518,7 @@
       try { state.student = localStorage.getItem('bp-student-' + am[1]) || ''; } catch (e) { state.student = ''; }
     }
     const first = parseHash();
-    if ((first.name === 'coach' || first.name === 'next') && !state.assignment) route(); else { show('motion'); renderMotion(); }
+    if ((first.name === 'coach' || first.name === 'next' || first.name === 'parents') && !state.assignment) route(); else { show('motion'); renderMotion(); }
     await loadMotions();
     if (state.assignment) {
       try {
@@ -2385,7 +2536,7 @@
       return;
     }
     const p = parseHash();
-    if (p.name === 'motion' || p.name === 'coach' || p.name === 'next') route();
+    if (p.name === 'motion' || p.name === 'coach' || p.name === 'next' || p.name === 'parents') route();
     else go('motion', { replace: true });
     // Team check and screenshots only: ?demo=dropped runs the recorded sample into the report,
     // ?demo=retry also runs the second try. Everything it shows is labelled "Recorded run".

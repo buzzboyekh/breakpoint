@@ -230,25 +230,60 @@ def parent_view(row, attempts, assignments, takehomes):
     }
 
 
-def assignment_summary(a, attempts, parent_rows=()):
-    """Who did the homework and where it broke: per student, tries and whether the last try held."""
+# Kinds of homework a coach can set. "live" kinds run tonight; the rest are shown so the
+# coach sees the range, but a link can only be made for a live kind.
+HOMEWORK_KINDS = [
+    {"id": "attack", "label": "Answer back", "line": "Hear the other side's case and answer it point by point.", "live": True},
+    {"id": "defend", "label": "Stand your ground", "line": "Your point gets attacked; keep it standing.", "live": True},
+    {"id": "challenge", "label": "Answer a challenge", "line": "One hard question about your own view.", "live": True},
+    {"id": "pitch", "label": "Pitch it", "line": "Sell an idea in 60 seconds to someone who doubts it.", "live": False},
+    {"id": "negotiate", "label": "Negotiate", "line": "Reach a deal with the other side, out loud.", "live": False},
+    {"id": "team", "label": "Team case", "line": "Split one case between two speakers.", "live": False},
+]
+LIVE_KINDS = {k["id"] for k in HOMEWORK_KINDS if k["live"]}
+
+
+def submission_status(p):
+    """One plain word the coach can read at a glance, from a submission row."""
+    if p["tries"] == 0:
+        return "Not started"
+    if p["first_break"] in (None, "none"):
+        return "Held first time"
+    if p["last_break"] == "none":
+        return "Fixed"
+    if p["tries"] >= 2:
+        return "Needs you"
+    return "Submitted"
+
+
+def assignment_summary(a, attempts, parent_rows=(), takehomes=()):
+    """Who did the homework and where it broke: per student, tries, status and whether the last try held."""
     mine = [t for t in attempts if t.get("assignment_id") == a["id"]]
     people = {}
     for t in mine:
         p = people.setdefault(t.get("student") or "Student", {"name": t.get("student") or "Student", "tries": 0,
-                                                              "first_break": None, "last_break": None})
+                                                              "first_break": None, "last_break": None,
+                                                              "first_at": t.get("at"), "last_at": None})
         p["tries"] += 1
         p["typed"] = bool(t.get("typed"))   # how the LAST try was given
+        p["last_at"] = t.get("at")
         b = _break_type(t)
         if p["first_break"] is None:
             p["first_break"] = b
         p["last_break"] = b
     notes = {r["student"]: r.get("note") for r in parent_rows if r.get("assignment_id") == a["id"]}
+    took = {t.get("student") for t in takehomes if t.get("assignment_id") == a["id"]
+            and isinstance(t.get("said"), str) and t["said"].strip()}
     for p in people.values():
         n = notes.get(p["name"])
         p["note"] = n if isinstance(n, str) else ""
         p["fixed"] = p["first_break"] not in (None, "none") and p["last_break"] == "none"
-    return {**a, "submissions": list(people.values()), "attempts": len(mine)}
+        p["took_home"] = p["name"] in took
+        p["status"] = submission_status(p)
+    subs = sorted(people.values(), key=lambda p: p.get("last_at") or "", reverse=True)
+    last = max((p.get("last_at") or "" for p in subs), default="") or None
+    return {**a, "kind": a.get("kind") or a.get("mode") or "attack", "submissions": subs,
+            "attempts": len(mine), "last_at": last}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -287,18 +322,33 @@ class Handler(BaseHTTPRequestHandler):
             if engine_motions and hasattr(engine_motions, "list_motions"):
                 return self._json(200, engine_motions.list_motions())
             return self._json(503, {"error": "motions not ready"})
+        if path == "/api/kinds":
+            return self._json(200, HOMEWORK_KINDS)
         if path == "/api/assignments":
             with _lock:
-                items, attempts, prows = load_assignments(), load_attempts(), load_parent_rows()
-            return self._json(200, [assignment_summary(a, attempts, prows) for a in reversed(items)])
+                items, attempts, prows, ths = load_assignments(), load_attempts(), load_parent_rows(), load_takehomes()
+            return self._json(200, [assignment_summary(a, attempts, prows, ths) for a in reversed(items)])
         if path.startswith("/api/assignments/"):
             aid = path.rsplit("/", 1)[-1]
             with _lock:
-                items, attempts, prows = load_assignments(), load_attempts(), load_parent_rows()
+                items, attempts, prows, ths = load_assignments(), load_attempts(), load_parent_rows(), load_takehomes()
             for a in items:
                 if a["id"] == aid:
-                    return self._json(200, assignment_summary(a, attempts, prows))
+                    return self._json(200, assignment_summary(a, attempts, prows, ths))
             return self._json(404, {"error": "assignment not found"})
+        if path == "/api/parent-links":
+            # The coach's own list of parent pages (this server runs on the coach's machine).
+            with _lock:
+                rows, attempts, assignments, takehomes = (load_parent_rows(), load_attempts(),
+                                                          load_assignments(), load_takehomes())
+            assignments = assignments if isinstance(assignments, list) else []
+            host = self.headers.get("Host") or f"127.0.0.1:{PORT}"
+            out = []
+            for r in reversed(rows):
+                v = parent_view(r, attempts, assignments, takehomes)
+                out.append({"token": r["token"], "assignment_id": r["assignment_id"], "student": r["student"],
+                            "at": r.get("at"), "url": f"http://{host}/p/{r['token']}", "view": v})
+            return self._json(200, out)
         if path.startswith("/a/"):  # a shareable assignment link opens the app with that assignment
             return self._static("/index.html")
         if path.startswith("/p/"):  # a parent link opens the app on the parent page
@@ -414,7 +464,10 @@ class Handler(BaseHTTPRequestHandler):
             motion_id = body.get("motion_id")
             if not motion_id:
                 return self._json(400, {"error": "motion_id required"})
-            item = {"id": uuid.uuid4().hex[:6], "motion_id": motion_id, "mode": body.get("mode") or "attack",
+            kind = body.get("kind") or body.get("mode") or "attack"
+            if kind not in LIVE_KINDS:
+                return self._json(400, {"error": "that kind of homework is a preview; it can't be set yet"})
+            item = {"id": uuid.uuid4().hex[:6], "motion_id": motion_id, "mode": kind, "kind": kind,
                     "title": (body.get("title") or "")[:120], "due": (body.get("due") or "")[:40],
                     "created": time.strftime("%Y-%m-%dT%H:%M:%S")}
             with _lock:
