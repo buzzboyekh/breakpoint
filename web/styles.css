@@ -743,6 +743,39 @@ input[aria-invalid="true"] { border-color: var(--text); border-style: dashed; }
   margin-top: 4px;
 }
 
+/* More kinds of homework (samples) */
+.next-more-head { margin-top: 16px; padding-top: 24px; border-top: 1px solid var(--rim); }
+.next-more-heading { font-family: var(--serif); font-size: 32px; font-weight: 400; line-height: 1.15; color: var(--text); margin: 0; }
+.pitch-note { max-width: 64ch; color: var(--text-3); font-size: 13px; line-height: 1.5; margin-top: -4px; }
+.mk-chat { display: grid; gap: 12px; }
+.mk-bubble { display: grid; gap: 6px; max-width: 70ch; padding: 14px 18px; border: 1px solid var(--rim); border-radius: 12px; background: rgba(255, 255, 255, 0.02); }
+.mk-bubble p { font-size: 17px; line-height: 1.5; color: var(--text); }
+.mk-bubble.you { justify-self: end; background: rgba(255, 255, 255, 0.05); }
+.mk-weak { display: grid; gap: 6px; padding: 14px 18px; border-left: 2px solid var(--rim-strong); }
+.mk-weak p { font-size: 17px; color: var(--text); }
+.mk-sides { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.mk-side { display: grid; gap: 6px; padding: 14px 18px; border: 1px solid var(--rim); border-radius: 12px; }
+.mk-side p { font-size: 16px; line-height: 1.45; color: var(--text); }
+.mk-hint { font-size: 15px; color: var(--text-2); }
+.tc-scene { display: flex; align-items: flex-end; gap: 20px; }
+.tc-char { display: grid; justify-items: center; gap: 4px; flex: none; width: 120px; text-align: center; }
+.tc-face { width: 72px; height: 72px; fill: var(--panel-2); stroke: var(--rim-strong); stroke-width: 1.5; }
+.tc-face .eye { fill: var(--text-2); stroke: none; }
+.tc-face .mouth { fill: none; stroke: var(--text-2); stroke-linecap: round; }
+.tc-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.tc-bubble { position: relative; flex: 1; min-height: 64px; padding: 16px 20px; border: 1px solid var(--rim-strong); border-radius: 12px; background: rgba(255, 255, 255, 0.04); margin-bottom: 36px; }
+.tc-bubble::before { content: ""; position: absolute; left: -7px; bottom: 18px; width: 12px; height: 12px; background: inherit; border-left: 1px solid var(--rim-strong); border-bottom: 1px solid var(--rim-strong); transform: rotate(45deg); }
+.tc-says { font-size: 18px; line-height: 1.5; color: var(--text); min-height: 1.5em; }
+.tc-choices { display: flex; flex-wrap: wrap; gap: 10px; }
+.tc-choice { white-space: normal; height: auto; min-height: 46px; padding: 10px 20px; text-align: left; }
+.tc-choice[aria-pressed="true"] { background: rgba(255, 255, 255, 0.08); border-color: var(--text-2); }
+.tc-own { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; color: var(--text-2); }
+.tc-mic { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tc-typing { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-3); }
+.tc-dots { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); animation: tc-pulse 1.2s var(--ease) infinite; }
+@keyframes tc-pulse { 50% { opacity: 0.3; } }
+.next-card:focus-visible, .tc-choice:focus-visible, .coach-tab:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .next-card,
@@ -754,6 +787,7 @@ input[aria-invalid="true"] { border-color: var(--text); border-style: dashed; }
   .next-card:hover, .next-card:active {
     transform: none !important;
   }
+  .tc-dots { animation: none; }
 }
 
 /* Responsive */
@@ -767,6 +801,10 @@ input[aria-invalid="true"] { border-color: var(--text); border-style: dashed; }
   .sgr-arrow {
     transform: rotate(90deg);
   }
+  .mk-sides { grid-template-columns: minmax(0, 1fr); }
+  .tc-scene { flex-direction: column; align-items: stretch; }
+  .tc-bubble { margin-bottom: 0; }
+  .tc-bubble::before { display: none; }
 }
 .bk-slots { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
 .bk-slot { padding: 8px 14px; border: 1px solid var(--rim); border-radius: 999px; font-size: 15px; }

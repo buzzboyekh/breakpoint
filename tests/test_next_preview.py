@@ -69,6 +69,52 @@ class TestNextPreview(unittest.TestCase):
         # 2. Preview label
         self.assertIn("Preview · not built yet", js)
 
+    def test_more_kinds_cards_have_titles_and_preview_label(self):
+        status, js = self._get("/app.js")
+        self.assertEqual(status, 200)
+
+        self.assertIn("More kinds of homework", js)
+        self.assertIn("Same loop, different practice: say it, fix it, take it to a person.", js)
+        start = js.find("const NEXT_MORE_CARDS")
+        self.assertGreater(start, 0)
+        cards = js[start:js.find("];", start)]
+        for title in ["Pitch it", "Negotiate", "Team case"]:
+            self.assertIn("title: '%s'" % title, cards)
+        # every card, old and new, is built by nextCard(), which always carries the preview label
+        helper = js[js.find("function nextCard("):]
+        helper = helper[:helper.find("\n  }\n")]
+        self.assertIn("T.previewNotBuilt", helper)
+        self.assertEqual(js.count("append(nextCard(card,"), 2)
+        # each new panel also shows the label next to its title
+        for fn in ["renderPitchPanel", "renderNegotiatePanel", "renderTeamPanel"]:
+            body = js[js.find("function %s(" % fn):]
+            self.assertIn("morePanelHead(", body[:body.find("\n  }\n")])
+        head = js[js.find("function morePanelHead("):]
+        self.assertIn("T.previewNotBuilt", head[:head.find("\n  }\n")])
+
+        # panel samples
+        self.assertIn("Why would I pay for that?", js)
+        self.assertIn("You said what it is, not why they need it", js)
+        self.assertIn("Hint: ask what matters most to them.", js)
+        self.assertIn("The class trip budget is short by 2,000. What do we cut?", js)
+        self.assertIn("Or say your own answer", js)
+        self.assertIn("Your teammate Ben is typing…", js)
+        self.assertEqual(len(re.findall(r"\{ text: '", js[js.find("const TEAM_CHOICES"):js.find("let teamTimer")])), 3)
+
+    def test_no_ai_proof_wording_in_readme_or_visible_text(self):
+        side_note = ("Even with an AI assistant open, a kid still has to show up, say it out loud "
+                     "and answer the follow-up. The practice happens either way.")
+        files = {
+            "README.md": (ROOT / "README.md").read_text(encoding="utf-8"),
+            "web/app.js": (ROOT / "web" / "app.js").read_text(encoding="utf-8"),
+            "web/index.html": (ROOT / "web" / "index.html").read_text(encoding="utf-8"),
+        }
+        for name, text in files.items():
+            for banned in ["ai-proof", "cheat-proof", "can't be faked", "cannot be faked"]:
+                self.assertNotIn(banned, text.lower(), f"'{banned}' found in {name}")
+        self.assertIn(side_note, files["README.md"])
+        self.assertIn(side_note, files["web/app.js"])
+
     def test_served_app_js_has_section_heading_and_subline(self):
         status, js = self._get("/app.js")
         self.assertEqual(status, 200)

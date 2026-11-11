@@ -126,7 +126,16 @@
     cardBookTitle: "Book ten minutes",
     cardBookLine: "One-on-one or small-group office hours with the coach, booked from the kid's weak spot.",
     cardCommunityTitle: "Community questions",
-    cardCommunityLine: "Homework that sends kids to a real person: a grandparent, a shop owner, a neighbour."
+    cardCommunityLine: "Homework that sends kids to a real person: a grandparent, a shop owner, a neighbour.",
+    moreKinds: 'More kinds of homework',
+    moreKindsSub: 'Same loop, different practice: say it, fix it, take it to a person.',
+    cardPitchTitle: 'Pitch it',
+    cardPitchLine: 'Sell an idea in 60 seconds. An AI customer pushes back.',
+    cardNegotiateTitle: 'Negotiate',
+    cardNegotiateLine: 'Strike a deal with an AI counterpart who wants something different.',
+    cardTeamTitle: 'Team case',
+    cardTeamLine: 'Two kids, one hard situation. They talk it through with a character and solve it together.',
+    sideNote: 'Even with an AI assistant open, a kid still has to show up, say it out loud and answer the follow-up. The practice happens either way.'
   };
 
   // Delivery lines (copy.md, "Delivery lines"); never label the child.
@@ -327,7 +336,8 @@
     assignment: null,  // homework link opened at /a/<id>: {id, data, error}
     student: '',       // first name typed on a homework link
     hw: { motionId: null, mode: 'attack', link: null, busy: false, error: '' },
-    nextSelected: 0
+    nextSelected: 0,
+    nextMoreSelected: null
   };
   let coachToken = 0;
 
@@ -466,7 +476,7 @@
   function fmtUsd(v) { return v < 0.01 ? v.toFixed(4) : v.toFixed(3); }
   function footerText(r) {
     if (!r || r.source === 'replay') return T.recorded;
-    const model = r.model || (state.health && state.health.model) || 'the judge';
+    const model = r.model || (state.health && state.health.model) || 'the AI model';
     return T.footer(shortModel(model), costText(r));
   }
 
@@ -626,6 +636,7 @@
         h('span', { class: 'chip holds' }, T.youArgue(sideLabel(m.side)))),
       h('h1', { class: 'pitch', id: 'pitch-title' }, 'Homework you do out loud.'),
       h('p', { class: 'pitch-sub' }, "AI can write the essay. It can't think out loud for you. Say your answer, get challenged, fix the weak spot, then take the question home."),
+      h('p', { class: 'small pitch-note' }, T.sideNote),
       h('h2', { class: 'q-line', id: 'motion-title' }, m.motion),
       toggle, modeHelp,
       h('div', null, h('span', { class: 'label' }, mode === 'defend' ? T.theirAttack : (mode === 'challenge' ? T.theChallenge : T.theirArgument))),
@@ -2079,6 +2090,144 @@
     );
   }
 
+  // More kinds of homework: same loop, different practice (samples only)
+  const NEXT_MORE_CARDS = [
+    { id: 'pitch-it', title: 'Pitch it', line: T.cardPitchLine, render: renderPitchPanel },
+    { id: 'negotiate', title: 'Negotiate', line: T.cardNegotiateLine, render: renderNegotiatePanel },
+    { id: 'team-case', title: 'Team case', line: T.cardTeamLine, render: renderTeamPanel }
+  ];
+
+  function morePanelHead(idBase, title, line) {
+    return h('div', { class: 'next-panel-header' },
+      h('div', { class: 'next-panel-title-group' },
+        h('h3', { id: idBase + '-panel-title', class: 'next-panel-title serif' }, title),
+        h('span', { class: 'badge preview-badge' }, T.previewNotBuilt),
+        h('span', { class: 'badge' }, T.sample)
+      ),
+      h('p', { class: 'muted next-panel-desc' }, line)
+    );
+  }
+
+  function renderPitchPanel() {
+    return h('section', { id: 'next-more-panel-content', class: 'panel next-preview-panel', 'aria-labelledby': 'pi-panel-title' },
+      morePanelHead('pi', T.cardPitchTitle, T.cardPitchLine),
+      h('div', { class: 'mk-chat' },
+        h('div', { class: 'mk-bubble them' },
+          h('span', { class: 'label' }, 'AI customer · Sample'),
+          h('p', null, '“Why would I pay for that?”')),
+        h('div', { class: 'mk-bubble you' },
+          h('span', { class: 'label' }, 'Kid’s reply · Sample'),
+          h('p', null, '“It’s a lunchbox that keeps food cold for six hours. It has two parts and it folds flat.”'))
+      ),
+      h('div', { class: 'mk-weak' },
+        h('span', { class: 'label' }, 'The one weak spot'),
+        h('p', null, 'You said what it is, not why they need it.'))
+    );
+  }
+
+  function renderNegotiatePanel() {
+    return h('section', { id: 'next-more-panel-content', class: 'panel next-preview-panel', 'aria-labelledby': 'ng-panel-title' },
+      morePanelHead('ng', T.cardNegotiateTitle, T.cardNegotiateLine),
+      h('div', { class: 'mk-sides' },
+        h('article', { class: 'mk-side' },
+          h('span', { class: 'label' }, 'You want'),
+          h('p', null, 'The class runs the school snack stall on Fridays.')),
+        h('article', { class: 'mk-side' },
+          h('span', { class: 'label' }, 'The AI counterpart wants'),
+          h('p', null, 'The stall for the art club, to raise money for paint.'))
+      ),
+      h('div', { class: 'mk-chat' },
+        h('div', { class: 'mk-bubble you' },
+          h('span', { class: 'label' }, 'Offer · Sample'),
+          h('p', null, '“We take Fridays, and we give the art club 10% of what we make.”')),
+        h('div', { class: 'mk-bubble them' },
+          h('span', { class: 'label' }, 'Counter-offer · Sample'),
+          h('p', null, '“We need Fridays more than money. What if we take every second Friday?”'))
+      ),
+      h('p', { class: 'mk-hint' }, 'Hint: ask what matters most to them.')
+    );
+  }
+
+  const TEAM_LINE = 'The class trip budget is short by 2,000. What do we cut?';
+  const TEAM_CHOICES = [
+    { text: 'Take the train, not the bus', reply: 'The train saves 1,200. We are still 800 short. What else?' },
+    { text: 'Skip the museum tickets', reply: 'That covers it, but the museum was the reason for the trip. Is that worth it?' },
+    { text: 'Ask each family for 100 more', reply: 'Some families can pay that, some can’t. How do we make it fair?' }
+  ];
+  let teamTimer = null;
+
+  function typeLine(el, text) {
+    if (teamTimer) { clearInterval(teamTimer); teamTimer = null; }
+    if (reducedMotion()) { el.textContent = text; return; }
+    let i = 0;
+    el.textContent = '';
+    teamTimer = setInterval(() => {
+      i += 1;
+      el.textContent = text.slice(0, i);
+      if (i >= text.length) { clearInterval(teamTimer); teamTimer = null; }
+    }, 28);
+  }
+
+  function teamCharacter() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 64 64');
+    svg.setAttribute('class', 'tc-face');
+    svg.setAttribute('aria-hidden', 'true');
+    [['circle', { cx: 32, cy: 24, r: 13 }], ['path', { d: 'M10 62c0-14 10-22 22-22s22 8 22 22z' }],
+      ['circle', { cx: 27, cy: 23, r: 1.6, class: 'eye' }], ['circle', { cx: 37, cy: 23, r: 1.6, class: 'eye' }],
+      ['path', { d: 'M27 30q5 3 10 0', class: 'mouth' }]].forEach(([tag, attrs]) => {
+      const el = document.createElementNS(ns, tag);
+      Object.keys(attrs).forEach((k) => el.setAttribute(k, String(attrs[k])));
+      svg.append(el);
+    });
+    return svg;
+  }
+
+  function renderTeamPanel() {
+    const says = h('p', { class: 'tc-says', 'aria-live': 'polite' });
+    const after = h('div', { class: 'tc-after', hidden: true });
+    const choices = TEAM_CHOICES.map((c) => h('button', {
+      type: 'button',
+      class: 'btn ghost tc-choice',
+      onclick: (e) => {
+        choices.forEach((b) => b.setAttribute('aria-pressed', String(b === e.currentTarget)));
+        typeLine(says, c.reply);
+        after.hidden = false;
+      }
+    }, c.text));
+    choices.forEach((b) => b.setAttribute('aria-pressed', 'false'));
+    after.append(h('p', { class: 'tc-typing' }, h('span', { class: 'tc-dots', 'aria-hidden': 'true' }), 'Your teammate Ben is typing…'));
+
+    const panel = h('section', { id: 'next-more-panel-content', class: 'panel next-preview-panel', 'aria-labelledby': 'tc-panel-title' },
+      morePanelHead('tc', T.cardTeamTitle, T.cardTeamLine),
+      h('div', { class: 'tc-scene' },
+        h('div', { class: 'tc-char' },
+          teamCharacter(),
+          h('span', { class: 'tc-name' }, 'Mr Chen'),
+          h('span', { class: 'small' }, 'Trip organiser · Sample')),
+        h('div', { class: 'tc-bubble' }, says)
+      ),
+      h('div', { class: 'tc-choices', role: 'group', 'aria-label': 'Sample answers' }, choices),
+      h('p', { class: 'tc-own' }, micIcon(), 'Or say your own answer'),
+      after
+    );
+    typeLine(says, TEAM_LINE);
+    return panel;
+  }
+
+  function micIcon() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('class', 'tc-mic');
+    svg.setAttribute('aria-hidden', 'true');
+    const p = document.createElementNS(ns, 'path');
+    p.setAttribute('d', 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v4M9 21h6');
+    svg.append(p);
+    return svg;
+  }
+
   function renderNext() {
     const root = $('#screen-next');
     if (!root) return;
@@ -2101,26 +2250,9 @@
 
     const cardsContainer = h('div', { class: 'next-cards', role: 'region', 'aria-label': "What's next preview cards" });
     NEXT_CARDS.forEach((card, idx) => {
-      const isSelected = state.nextSelected === idx;
-      const cardEl = h('button', {
-        type: 'button',
-        class: 'card next-card' + (isSelected ? ' is-active' : ''),
-        'aria-expanded': String(isSelected),
-        'aria-controls': 'next-panel-container',
-        onclick: () => {
-          state.nextSelected = isSelected ? null : idx;
-          renderNext();
-        }
-      },
-        h('div', { class: 'next-card-top' },
-          h('span', { class: 'badge preview-badge' }, T.previewNotBuilt),
-          isSelected ? h('span', { class: 'badge is-active-badge' }, 'Open') : null
-        ),
-        h('h2', { class: 'next-card-title' }, card.title),
-        h('p', { class: 'next-card-desc' }, card.line),
-        h('span', { class: 'next-card-hint' }, isSelected ? 'Close preview' : 'Click to preview →')
-      );
-      cardsContainer.append(cardEl);
+      cardsContainer.append(nextCard(card, state.nextSelected === idx, 'next-panel-container', () => {
+        state.nextSelected = state.nextSelected === idx ? null : idx;
+      }));
     });
 
     const panelContainer = h('div', { id: 'next-panel-container', class: 'next-panel-container' });
@@ -2134,8 +2266,51 @@
       );
     }
 
-    const wrap = h('div', { class: 'next-screen-wrap' }, navBar, head, cardsContainer, panelContainer);
+    if (teamTimer) { clearInterval(teamTimer); teamTimer = null; }
+    const moreHead = h('header', { class: 'next-head next-more-head' },
+      h('h2', { class: 'next-more-heading' }, T.moreKinds),
+      h('p', { class: 'next-subline' }, T.moreKindsSub)
+    );
+    const moreCards = h('div', { class: 'next-cards', role: 'region', 'aria-label': 'More kinds of homework preview cards' });
+    NEXT_MORE_CARDS.forEach((card, idx) => {
+      moreCards.append(nextCard(card, state.nextMoreSelected === idx, 'next-more-panel-container', () => {
+        state.nextMoreSelected = state.nextMoreSelected === idx ? null : idx;
+      }));
+    });
+    const morePanel = h('div', { id: 'next-more-panel-container', class: 'next-panel-container' });
+    if (state.nextMoreSelected != null && NEXT_MORE_CARDS[state.nextMoreSelected]) {
+      morePanel.append(NEXT_MORE_CARDS[state.nextMoreSelected].render());
+    }
+
+    const wrap = h('div', { class: 'next-screen-wrap' }, navBar, head, cardsContainer, panelContainer, moreHead, moreCards, morePanel);
     root.append(wrap);
+    // re-rendering replaces the cards: put keyboard focus back on the one just clicked
+    const f = state.nextFocus && root.querySelector('[data-card="' + state.nextFocus + '"]');
+    state.nextFocus = null;
+    if (f) f.focus();
+  }
+
+  function nextCard(card, isSelected, controls, toggle) {
+    return h('button', {
+      type: 'button',
+      class: 'card next-card' + (isSelected ? ' is-active' : ''),
+      'data-card': card.id,
+      'aria-expanded': String(isSelected),
+      'aria-controls': controls,
+      onclick: () => {
+        toggle();
+        state.nextFocus = card.id;
+        renderNext();
+      }
+    },
+      h('div', { class: 'next-card-top' },
+        h('span', { class: 'badge preview-badge' }, T.previewNotBuilt),
+        isSelected ? h('span', { class: 'badge is-active-badge' }, 'Open') : null
+      ),
+      h('h2', { class: 'next-card-title' }, card.title),
+      h('p', { class: 'next-card-desc' }, card.line),
+      h('span', { class: 'next-card-hint' }, isSelected ? 'Close preview' : 'Click to preview →')
+    );
   }
 
   // ---------------------------------------------------------------- boot
