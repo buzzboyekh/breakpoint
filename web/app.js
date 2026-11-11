@@ -94,7 +94,19 @@
     aiSaid: 'The AI said',
     reviewEmpty: 'Nothing to check right now.',
     saved: (v) => (v === 'agree' ? 'You agreed.' : 'You disagreed.'),
-    classError: "The class list couldn't load."
+    classError: "The class list couldn't load.",
+    // What's next preview
+    whatsNext: "What's next",
+    nextSubline: "AI finds the gap. People close it. These are the next ways we send kids to people.",
+    previewNotBuilt: "Preview · not built yet",
+    backToCoach: "← Class overview",
+    classOverviewTab: "Class overview",
+    cardSmallGroupTitle: "Small-group rounds",
+    cardSmallGroupLine: "Three kids, one question. Each one challenges another's answer.",
+    cardParentTitle: "Parent view",
+    cardParentLine: "One short note a week: what your kid argued, and the question to ask at dinner.",
+    cardCommunityTitle: "Community questions",
+    cardCommunityLine: "Homework that sends kids to a real person: a grandparent, a shop owner, a neighbour."
   };
 
   // Delivery lines (copy.md, "Delivery lines"); never label the child.
@@ -294,7 +306,8 @@
     reviewed: {},
     assignment: null,  // homework link opened at /a/<id>: {id, data, error}
     student: '',       // first name typed on a homework link
-    hw: { motionId: null, mode: 'attack', link: null, busy: false, error: '' }
+    hw: { motionId: null, mode: 'attack', link: null, busy: false, error: '' },
+    nextSelected: 0
   };
   let coachToken = 0;
 
@@ -458,6 +471,7 @@
     const r = parseHash();
     if (r.name !== 'live' && state.live) abortLive();
     if (r.name === 'coach') { show('coach'); renderCoach(); return; }
+    if (r.name === 'next') { show('next'); renderNext(); return; }
     if (r.name === 'live') {
       if (!state.live) { go('motion', { replace: true }); return; }
       show('live');
@@ -518,7 +532,7 @@
       const coach = a.getAttribute('data-nav') === 'coach';
       if (coach === (name === 'coach')) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
-    document.title = name === 'coach' ? 'Breakpoint · Coach view' : 'Breakpoint';
+    document.title = name === 'coach' ? 'Breakpoint · Coach view' : name === 'next' ? "Breakpoint · What's next" : 'Breakpoint';
     updateTopbar(name);
     if (prev !== name) {
       window.scrollTo(0, 0);
@@ -1639,7 +1653,13 @@
     const listBox = h('section', { class: 'panel hw-list', 'aria-busy': 'true' }, h('div', { class: 'wait-line', 'aria-hidden': 'true' }));
     const classBox = h('div', { class: 'coach-col', 'aria-busy': 'true' }, h('div', { class: 'wait-line', 'aria-hidden': 'true' }));
     root.append(h('div', { class: 'coach' },
-      h('h1', { class: 'sr-only' }, 'Coach view'),
+      h('div', { class: 'coach-bar' },
+        h('h1', { class: 'sr-only' }, 'Coach view'),
+        h('nav', { class: 'coach-tabs', 'aria-label': 'Coach navigation' },
+          h('span', { class: 'coach-tab is-active', 'aria-current': 'page' }, T.classOverviewTab),
+          h('a', { href: '#next', class: 'coach-tab', onclick: (e) => { e.preventDefault(); go('next'); } }, T.whatsNext)
+        )
+      ),
       h('div', { class: 'coach-grid' },
         h('div', { class: 'coach-col' }, homeworkCreateCard(listBox), listBox),
         classBox)));
@@ -1849,6 +1869,198 @@
       actions);
   }
 
+  // ---------------------------------------------------------------- 6. What's next preview
+  const NEXT_CARDS = [
+    {
+      id: 'small-group',
+      title: 'Small-group rounds',
+      line: "Three kids, one question. Each one challenges another's answer.",
+      render: renderSmallGroupPanel
+    },
+    {
+      id: 'parent-view',
+      title: 'Parent view',
+      line: "One short note a week: what your kid argued, and the question to ask at dinner.",
+      render: renderParentViewPanel
+    },
+    {
+      id: 'community-questions',
+      title: 'Community questions',
+      line: "Homework that sends kids to a real person: a grandparent, a shop owner, a neighbour.",
+      render: renderCommunityPanel
+    }
+  ];
+
+  function renderSmallGroupPanel() {
+    return h('section', { id: 'next-panel-content', class: 'panel next-preview-panel', 'aria-labelledby': 'sgr-panel-title' },
+      h('div', { class: 'next-panel-header' },
+        h('div', { class: 'next-panel-title-group' },
+          h('h3', { id: 'sgr-panel-title', class: 'next-panel-title serif' }, T.cardSmallGroupTitle),
+          h('span', { class: 'badge preview-badge' }, T.previewNotBuilt),
+          h('span', { class: 'badge' }, T.sample)
+        ),
+        h('p', { class: 'muted next-panel-desc' }, T.cardSmallGroupLine)
+      ),
+      h('div', { class: 'sgr-round-card' },
+        h('div', { class: 'sgr-students-row', 'aria-label': 'Sample round' },
+          h('div', { class: 'sgr-student' },
+            h('span', { class: 'avatar', 'aria-hidden': 'true' }, 'A'),
+            h('span', { class: 'sgr-name' }, 'Amy'),
+            h('span', { class: 'badge sample-tag' }, T.sample)
+          ),
+          h('div', { class: 'sgr-arrow', 'aria-hidden': 'true' },
+            h('span', { class: 'sgr-arrow-text' }, 'challenges'),
+            h('span', { class: 'sgr-arrow-icon' }, '→')
+          ),
+          h('div', { class: 'sgr-student' },
+            h('span', { class: 'avatar', 'aria-hidden': 'true' }, 'B'),
+            h('span', { class: 'sgr-name' }, 'Ben'),
+            h('span', { class: 'badge sample-tag' }, T.sample)
+          ),
+          h('div', { class: 'sgr-arrow', 'aria-hidden': 'true' },
+            h('span', { class: 'sgr-arrow-text' }, 'challenges'),
+            h('span', { class: 'sgr-arrow-icon' }, '→')
+          ),
+          h('div', { class: 'sgr-student' },
+            h('span', { class: 'avatar', 'aria-hidden': 'true' }, 'C'),
+            h('span', { class: 'sgr-name' }, 'Chloe'),
+            h('span', { class: 'badge sample-tag' }, T.sample)
+          )
+        ),
+        h('div', { class: 'sgr-loop-note', 'aria-hidden': 'true' },
+          h('span', { class: 'sgr-loop-icon' }, '↩'),
+          h('span', null, 'Chloe challenges Amy to complete the round.')
+        ),
+        h('div', { class: 'sgr-challenge' },
+          h('span', { class: 'label' }, 'Sample challenge line'),
+          h('p', { class: 'sgr-quote' }, '“Amy challenges Ben: If phones are banned for everyone, how do kids who take the bus alone reach home safely?”')
+        )
+      )
+    );
+  }
+
+  function renderParentViewPanel() {
+    return h('section', { id: 'next-panel-content', class: 'panel next-preview-panel', 'aria-labelledby': 'pv-panel-title' },
+      h('div', { class: 'next-panel-header' },
+        h('div', { class: 'next-panel-title-group' },
+          h('h3', { id: 'pv-panel-title', class: 'next-panel-title serif' }, T.cardParentTitle),
+          h('span', { class: 'badge preview-badge' }, T.previewNotBuilt),
+          h('span', { class: 'badge' }, T.sample)
+        ),
+        h('p', { class: 'muted next-panel-desc' }, T.cardParentLine)
+      ),
+      h('article', { class: 'pv-note-card' },
+        h('div', { class: 'pv-note-head' },
+          h('span', { class: 'label' }, 'Weekly note · Sample'),
+          h('span', { class: 'badge' }, T.sample)
+        ),
+        h('div', { class: 'pv-block' },
+          h('span', { class: 'label' }, "This week's question"),
+          h('p', { class: 'pv-question serif' }, 'Should middle schools ban phones in class?')
+        ),
+        h('div', { class: 'pv-block' },
+          h('span', { class: 'label' }, 'Where their thinking changed'),
+          h('p', { class: 'pv-body' }, 'Amy started by arguing that phones only cause distraction in lessons. When asked about students using laptops for classwork, she noticed the distraction comes from pop-up alerts, not the phone itself.')
+        ),
+        h('div', { class: 'pv-block pv-dinner-block' },
+          h('span', { class: 'label' }, 'Ask at dinner'),
+          h('p', { class: 'pv-dinner-text' }, '“What is one screen rule at school or home that feels fair to both of us?”')
+        )
+      )
+    );
+  }
+
+  function renderCommunityPanel() {
+    return h('section', { id: 'next-panel-content', class: 'panel next-preview-panel', 'aria-labelledby': 'cq-panel-title' },
+      h('div', { class: 'next-panel-header' },
+        h('div', { class: 'next-panel-title-group' },
+          h('h3', { id: 'cq-panel-title', class: 'next-panel-title serif' }, T.cardCommunityTitle),
+          h('span', { class: 'badge preview-badge' }, T.previewNotBuilt),
+          h('span', { class: 'badge' }, T.sample)
+        ),
+        h('p', { class: 'muted next-panel-desc' }, T.cardCommunityLine)
+      ),
+      h('article', { class: 'cq-task-card' },
+        h('div', { class: 'cq-task-header' },
+          h('span', { class: 'label' }, 'Task card · Sample only'),
+          h('span', { class: 'badge' }, T.sample)
+        ),
+        h('h4', { class: 'cq-task-title serif' }, 'Ask someone who was at school before phones existed'),
+        h('p', { class: 'cq-task-sub muted' }, 'Find a grandparent, neighbour, or shop owner. Ask them how people made plans or stayed in touch before phones existed.'),
+        h('div', { class: 'field cq-box-field' },
+          h('label', { for: 'cq-sample-box', class: 'field-label' }, 'What did they say?'),
+          h('textarea', {
+            id: 'cq-sample-box',
+            rows: 3,
+            disabled: true,
+            class: 'cq-sample-textarea mono',
+            readonly: true
+          }, 'My grandmother told me: “If you wanted to meet friends after class, you agreed on a spot before leaving school. If someone was late, you waited ten minutes and then went ahead.”'),
+          h('p', { class: 'cq-disabled-note muted' }, 'Disabled · sample only')
+        )
+      )
+    );
+  }
+
+  function renderNext() {
+    const root = $('#screen-next');
+    if (!root) return;
+    root.textContent = '';
+
+    const navBar = h('div', { class: 'next-bar' },
+      h('nav', { class: 'coach-tabs', 'aria-label': 'Coach navigation' },
+        h('a', { href: '#coach', class: 'coach-tab', onclick: (e) => { e.preventDefault(); go('coach'); } }, T.backToCoach),
+        h('span', { class: 'coach-tab is-active', 'aria-current': 'page' }, T.whatsNext)
+      )
+    );
+
+    const head = h('header', { class: 'next-head' },
+      h('div', { class: 'next-title-row' },
+        h('h1', { class: 'next-heading' }, T.whatsNext),
+        h('span', { class: 'badge preview-badge' }, T.previewNotBuilt)
+      ),
+      h('p', { class: 'next-subline' }, T.nextSubline)
+    );
+
+    const cardsContainer = h('div', { class: 'next-cards', role: 'region', 'aria-label': "What's next preview cards" });
+    NEXT_CARDS.forEach((card, idx) => {
+      const isSelected = state.nextSelected === idx;
+      const cardEl = h('button', {
+        type: 'button',
+        class: 'card next-card' + (isSelected ? ' is-active' : ''),
+        'aria-expanded': String(isSelected),
+        'aria-controls': 'next-panel-container',
+        onclick: () => {
+          state.nextSelected = isSelected ? null : idx;
+          renderNext();
+        }
+      },
+        h('div', { class: 'next-card-top' },
+          h('span', { class: 'badge preview-badge' }, T.previewNotBuilt),
+          isSelected ? h('span', { class: 'badge is-active-badge' }, 'Open') : null
+        ),
+        h('h2', { class: 'next-card-title' }, card.title),
+        h('p', { class: 'next-card-desc' }, card.line),
+        h('span', { class: 'next-card-hint' }, isSelected ? 'Close preview' : 'Click to preview →')
+      );
+      cardsContainer.append(cardEl);
+    });
+
+    const panelContainer = h('div', { id: 'next-panel-container', class: 'next-panel-container' });
+    if (state.nextSelected != null && NEXT_CARDS[state.nextSelected]) {
+      panelContainer.append(NEXT_CARDS[state.nextSelected].render());
+    } else {
+      panelContainer.append(
+        h('div', { class: 'panel next-empty-panel' },
+          h('p', { class: 'muted' }, 'Select a card above to see its preview.')
+        )
+      );
+    }
+
+    const wrap = h('div', { class: 'next-screen-wrap' }, navBar, head, cardsContainer, panelContainer);
+    root.append(wrap);
+  }
+
   // ---------------------------------------------------------------- boot
   function wireLive() {
     $('#btn-done').addEventListener('click', () => {
@@ -1893,7 +2105,7 @@
       try { state.student = localStorage.getItem('bp-student-' + am[1]) || ''; } catch (e) { state.student = ''; }
     }
     const first = parseHash();
-    if (first.name === 'coach' && !state.assignment) route(); else { show('motion'); renderMotion(); }
+    if ((first.name === 'coach' || first.name === 'next') && !state.assignment) route(); else { show('motion'); renderMotion(); }
     await loadMotions();
     if (state.assignment) {
       try {
@@ -1911,7 +2123,7 @@
       return;
     }
     const p = parseHash();
-    if (p.name === 'motion' || p.name === 'coach') route();
+    if (p.name === 'motion' || p.name === 'coach' || p.name === 'next') route();
     else go('motion', { replace: true });
     // Team check and screenshots only: ?demo=dropped runs the recorded sample into the report,
     // ?demo=retry also runs the second try. Everything it shows is labelled "Recorded run".
