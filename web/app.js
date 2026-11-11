@@ -481,6 +481,28 @@
   }
 
   // ---------------------------------------------------------------- 1. motion card
+  function pointCards(m, mode) {
+    const ln = (k, v) => hasText(v) ? h('div', { class: 'ln' }, h('b', null, k), h('span', null, v)) : null;
+    if (mode === 'defend') {
+      const att = attackOn(m) || {};
+      return h('div', { class: 'pts' },
+        h('div', { class: 'pt' }, h('span', { class: 'label' }, T.yourPoint), h('div', { class: 'claim' }, textOf(att.target))),
+        h('div', { class: 'pt' }, h('span', { class: 'label' }, T.theirAttack), h('div', { class: 'claim' }, textOf(att.attack))));
+    }
+    if (mode === 'challenge') {
+      const ch = (m && m.challenge) || {};
+      return h('div', { class: 'pts' },
+        h('div', { class: 'pt' }, h('span', { class: 'label' }, T.yourPoint), h('div', { class: 'claim' }, textOf(ch.claim))),
+        h('div', { class: 'pt' }, h('span', { class: 'label' }, T.theChallenge), h('div', { class: 'claim' }, textOf(ch.question))));
+    }
+    const args = argsOf(m);
+    return h('div', { class: 'pts' + (args.length === 1 ? ' is-single' : '') },
+      args.map((a, i) => h('div', { class: 'pt' },
+        h('span', { class: 'label' }, T.point(i + 1)),
+        h('div', { class: 'claim' }, textOf(a.claim)),
+        ln('REASON', a.reason), ln('EVIDENCE', a.evidence), ln('IMPACT', a.impact))));
+  }
+
   function renderMotion() {
     const root = $('#screen-motion');
     root.textContent = '';
@@ -488,80 +510,77 @@
     if (!state.motions.length || loadingHw) {
       root.append(h('div', { class: 'skeleton', 'aria-busy': 'true' },
         h('div', { class: 'skel', style: { 'max-width': '160px' } }), h('div', { class: 'skel lg' }),
-        h('div', { class: 'points' }, h('div', { class: 'skel card-skel' }), h('div', { class: 'skel card-skel' }))));
+        h('div', { class: 'pts' }, h('div', { class: 'skel card-skel' }), h('div', { class: 'skel card-skel' }))));
       return;
     }
     const hwk = state.assignment;
     if (hwk && hwk.error) {
-      root.append(h('div', { class: 'state-panel', role: 'alert' }, h('p', { class: 'eyebrow' }, T.hwEyebrow), h('h1', null, T.hwBadLink)));
+      root.append(h('div', { class: 'state-panel', role: 'alert' }, h('span', { class: 'label' }, T.hwEyebrow), h('h1', null, T.hwBadLink)));
       return;
     }
     const m = currentMotion();
     const modes = availableModes(m);
     const mode = state.mode;
     const pairModes = !hwk && modes.indexOf('attack') >= 0 && modes.indexOf('defend') >= 0;
+    const needName = !!(hwk && !state.student);
 
-    const toggle = pairModes ? h('div', { class: 'mode' },
-      h('div', { class: 'mode-toggle', role: 'group', 'aria-label': 'Exchange' },
-        h('button', { type: 'button', 'aria-pressed': String(mode === 'attack'), onclick: () => setMode('attack') }, T.modeAttack),
-        h('button', { type: 'button', 'aria-pressed': String(mode === 'defend'), onclick: () => setMode('defend') }, T.modeDefend)),
-      h('p', { class: 'helper' }, mode === 'defend' ? T.helperDefend : T.helperAttack)) : null;
+    const toggle = pairModes ? h('div', { class: 'modes', role: 'group', 'aria-label': 'Exchange' },
+      h('button', { type: 'button', 'aria-pressed': String(mode === 'attack'), onclick: () => setMode('attack') }, T.modeAttack),
+      h('button', { type: 'button', 'aria-pressed': String(mode === 'defend'), onclick: () => setMode('defend') }, T.modeDefend)) : null;
+    const modeHelp = pairModes ? h('p', { class: 'mode-help' }, mode === 'defend' ? T.helperDefend : T.helperAttack) : null;
 
-    let block;
-    let chainHost = null;
-    const C = getChain();
-    if (C && typeof C.render === 'function' && mode !== 'challenge') {
-      // chain.js draws the plain opponent chain (result null); the cards below are the fallback
-      chainHost = h('div', { class: 'mc-chain' });
-      // in defend mode chain.js labels its own row "Their attack", so the section label would repeat it
-      block = h('section', { class: 'mc-block', 'aria-label': mode === 'defend' ? T.theirAttack : T.theirArgument },
-        mode === 'defend' ? null : h('h2', { class: 'eyebrow' }, T.theirArgument), chainHost);
-    } else if (mode === 'defend') block = defendBlock(m);
-    else if (mode === 'challenge') block = challengeBlock(m);
-    else block = attackBlock(m);
+    const startBtn = h('button', { type: 'button', class: 'btn primary', id: 'btn-start', onclick: () => startLive() },
+      mode === 'defend' ? T.startDefend : T.startAttack, h('span', { class: 'arrow', 'aria-hidden': 'true' }, '→'));
+    const go = needName ? null : h('div', { class: 'go' },
+      h('div', { class: 'ring', 'aria-hidden': 'true' }, '1:00'),
+      startBtn,
+      hwk ? null : h('button', { type: 'button', class: 'btn ghost', onclick: startRecorded }, T.recorded),
+      (!hwk && state.motions.length > 1) ? h('button', { type: 'button', class: 'btn btn-text', id: 'btn-new-motion', 'aria-expanded': String(state.pickerOpen), 'aria-controls': 'motion-picker', onclick: togglePicker }, T.newMotion) : null,
+      mode === 'attack' ? h('span', { class: 'help' }, T.prep) : null);
 
-    let actions;
-    if (hwk && !state.student) {
+    const card = h('section', { class: 'panel mc', 'aria-label': T.eyebrow },
+      h('span', { class: 'zhmark', 'aria-hidden': 'true' }, '破綻'),
+      h('div', { class: 'mc-eyebrow' },
+        h('span', { class: 'label' }, hwk ? T.hwEyebrow : T.eyebrow),
+        h('span', { class: 'chip holds' }, T.youArgue(sideLabel(m.side)))),
+      h('h1', { id: 'motion-title' }, m.motion),
+      toggle, modeHelp,
+      h('div', null, h('span', { class: 'label' }, mode === 'defend' ? T.theirAttack : (mode === 'challenge' ? T.theChallenge : T.theirArgument))),
+      pointCards(m, mode),
+      go);
+
+    let side = null;
+    if (needName) {
       // homework link: ask for a first name once, then start that motion and mode
       const input = h('input', { id: 'hw-name', type: 'text', name: 'given-name', autocomplete: 'given-name', maxlength: '30', placeholder: T.hwNamePh, required: true, 'aria-describedby': 'hw-name-help' });
-      actions = h('form', {
-        class: 'hw-join', novalidate: true,
-        onsubmit: (e) => {
-          e.preventDefault();
-          const name = input.value.trim().split(/\s+/)[0] || '';
-          if (!name) { input.focus(); input.setAttribute('aria-invalid', 'true'); return; }
-          state.student = name.slice(0, 30);
-          try { localStorage.setItem('bp-student-' + hwk.id, state.student); } catch (err) { /* private window */ }
-          startLive();
-        }
-      },
-        h('label', { for: 'hw-name', class: 'field-label' }, T.hwName),
-        h('div', { class: 'hw-join-row' }, input, h('button', { type: 'submit', class: 'btn primary' }, T.hwStart)),
-        h('p', { class: 'helper', id: 'hw-name-help' }, T.hwNameHelper));
-    } else {
-      actions = h('div', { class: 'mc-actions' },
-        h('button', { type: 'button', class: 'btn primary', id: 'btn-start', onclick: () => startLive() }, mode === 'defend' ? T.startDefend : T.startAttack),
-        hwk ? null : h('button', { type: 'button', class: 'btn ghost', onclick: startRecorded }, T.recorded),
-        (!hwk && state.motions.length > 1) ? h('button', { type: 'button', class: 'btn btn-text', id: 'btn-new-motion', 'aria-expanded': String(state.pickerOpen), 'aria-controls': 'motion-picker', onclick: togglePicker }, T.newMotion) : null,
-        mode === 'attack' ? h('p', { class: 'helper' }, T.prep) : null);
+      side = h('aside', { class: 'panel entry', 'aria-label': T.hwEyebrow },
+        h('span', { class: 'label' }, T.hwEyebrow),
+        h('h2', null, "Who's practising?"),
+        h('form', {
+          class: 'field', novalidate: true,
+          onsubmit: (e) => {
+            e.preventDefault();
+            const name = input.value.trim().split(/\s+/)[0] || '';
+            if (!name) { input.focus(); input.setAttribute('aria-invalid', 'true'); return; }
+            state.student = name.slice(0, 30);
+            try { localStorage.setItem('bp-student-' + hwk.id, state.student); } catch (err) { /* private window */ }
+            startLive();
+          }
+        },
+          h('label', { for: 'hw-name', class: 'field-label' }, T.hwName),
+          input,
+          h('p', { class: 'small', id: 'hw-name-help' }, T.hwNameHelper),
+          h('button', { type: 'submit', class: 'btn primary', style: { 'justify-self': 'start' } }, T.hwStart)),
+        h('p', { class: 'small priv-foot' }, "Your camera video never leaves this device. Your voice is transcribed by the browser's speech service."));
+    } else if (state.pickerOpen && !hwk) {
+      side = h('aside', { class: 'panel entry', id: 'motion-picker', 'aria-label': T.newMotion },
+        h('span', { class: 'label' }, T.newMotion),
+        h('div', { class: 'picker' },
+          state.motions.map((mm) => h('button', { type: 'button', 'aria-pressed': String(mm.id === m.id), onclick: () => pickMotion(mm.id) },
+            h('span', { class: 'small' }, sideLabel(mm.side)), h('span', null, mm.motion)))));
     }
 
-    const picker = (state.pickerOpen && !hwk) ? h('div', { class: 'picker', id: 'motion-picker' },
-      state.motions.map((mm) => h('button', { type: 'button', 'aria-pressed': String(mm.id === m.id), onclick: () => pickMotion(mm.id) },
-        h('span', { class: 'tag' }, sideLabel(mm.side)), h('span', null, mm.motion)))) : null;
-
-    root.append(h('div', { class: 'mc' },
-      h('div', { class: 'mc-head' },
-        h('p', { class: 'eyebrow' }, hwk ? T.hwEyebrow : T.eyebrow),
-        h('h1', { class: 'mc-motion', id: 'motion-title' }, m.motion),
-        h('div', { class: 'mc-meta' }, h('span', { class: 'chip chip-side' }, T.youArgue(sideLabel(m.side))))),
-      toggle, block, actions, picker));
-    if (chainHost) {
-      try { C.render(chainHost, m, null, { animate: !reducedMotion(), mode: mode }); } catch (e) {
-        console.warn('Chain.render (motion card) failed, using cards:', e);
-        block.replaceWith(mode === 'defend' ? defendBlock(m) : attackBlock(m));
-      }
-    }
+    root.append(h('div', { class: 'stage' + (side ? '' : ' is-solo') }, card, side));
   }
 
   function chainRows(obj) {
