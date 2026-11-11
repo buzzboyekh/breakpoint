@@ -702,6 +702,16 @@ def _coverage(ctx, raw_cov, attacks):
             why_not.setdefault(aid, "null")
             continue
         ok = [g for g in cands if _supported(ctx, g, idx, ctx.kw.get(aid))]
+        if not ok:
+            # Wider check (lead, 19:45): a real rebuttal can run several sentences before it names the
+            # topic (e.g. "a teacher will shut it down ... phones can be a distraction"). Accept the
+            # judge's quote when the student's speech names this point somewhere AND the quoted words
+            # are not about a different point. A quote that sits on another point's words still fails,
+            # so "attacked only A1" can never count as covering A2.
+            others = [k for k in ctx.ids if k != aid]
+            if _kw_hit(ctx.tr.words, ctx.kw.get(aid)):
+                ok = [g for g in cands
+                      if not any(_kw_hit(ctx.tr.window(g[1], g[2]), ctx.kw.get(o)) for o in others)]
         if ok:
             covered[aid] = ok[0]
             why_not.pop(aid, None)
@@ -833,10 +843,11 @@ def _decide_defend(ctx, obj):
     guard = bool(g) and not answered
     holds = answered and _truthy(ans.get("holds"))
     if not answered or t in ("new_argument_while_defending", "missed_the_attack"):
-        if t in ("new_argument_while_defending", "missed_the_attack"):
-            t2, over = t, False
-        else:
-            t2, over = ("missed_the_attack" if _mentions_case(ctx) else "new_argument_while_defending"), True
+        # Lead, 19:50: choose between the two labels in code, so the same speech always gets the same
+        # label: talked about the case but not the attack -> missed_the_attack; brought something
+        # new instead -> new_argument_while_defending.
+        t2 = "missed_the_attack" if _mentions_case(ctx) else "new_argument_while_defending"
+        over = t not in ("new_argument_while_defending", "missed_the_attack")
         return ({"type": t2, "arg": None, "link": None}, over, guard,
                 {"answered": False, "quote": None, "holds": False})
     if t == "no_link" or (t == "none" and not holds):
@@ -994,6 +1005,9 @@ def _build(ctx, obj):
         conf = 0.6
     if over:   # code overruled the judge: never more sure than the evidence for the override
         conf = min(conf, (0.65 if ctx.kw_preset else 0.55) if guard else 0.85)
+    if (b["type"] == "dropped_argument" and not over and b.get("arg")
+            and not _kw_hit(ctx.tr.words, ctx.kw.get(b["arg"]))):
+        conf = max(conf, 0.85)   # judge and code agree, and the speech never names that point
     if len(ctx.tr.words) < 8:
         conf = min(conf, 0.5)
 
