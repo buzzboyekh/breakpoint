@@ -101,10 +101,15 @@ SAMPLE_CLASS = {
 
 
 def load_attempts():
+    """Saved attempts; rows that are not well-formed are skipped so the coach view never breaks."""
     try:
-        return json.loads(ATTEMPTS.read_text())
+        rows = json.loads(ATTEMPTS.read_text())
     except Exception:
         return []
+    if not isinstance(rows, list):
+        return []
+    return [a for a in rows if isinstance(a, dict) and isinstance(a.get("result"), dict)
+            and isinstance(a.get("id"), str)]
 
 
 def save_attempts(items):
@@ -115,9 +120,10 @@ def save_attempts(items):
 
 def load_takehomes():
     try:
-        return json.loads(TAKEHOME.read_text())
+        rows = json.loads(TAKEHOME.read_text())
     except Exception:
         return []
+    return [r for r in rows if isinstance(r, dict)] if isinstance(rows, list) else []
 
 
 def save_takehomes(items):
@@ -281,6 +287,10 @@ class Handler(BaseHTTPRequestHandler):
             code = 200 if "error" not in result else 503
             return self._json(code, result)
         if path == "/api/attempts":
+            if not isinstance(body.get("result"), dict) or not isinstance(body["result"].get("break"), dict):
+                return self._json(400, {"error": "result must be an analysis result object"})
+            if body.get("body") is not None and not isinstance(body.get("body"), dict):
+                body["body"] = None
             with _lock:
                 items = load_attempts()
                 item = {"id": uuid.uuid4().hex[:10], "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
