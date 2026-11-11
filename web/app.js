@@ -933,7 +933,7 @@
       return;
     }
     state.live = null;
-    submitAttempt({ transcript: text, body: L.body, sampleBody: false, recorded: false });
+    submitAttempt({ transcript: text, body: L.body, sampleBody: false, recorded: false, typed: !!L.typed });
   }
 
   function stopCamera(L) {
@@ -1041,7 +1041,7 @@
     result = normalizeResult(result, P);
     const entry = {
       result: result, transcript: P.transcript, body: P.body || null, sampleBody: !!P.sampleBody,
-      recorded: !!P.recorded, sampleId: P.sampleId || null, mode: state.mode, motionId: m.id
+      recorded: !!P.recorded, typed: !!P.typed, sampleId: P.sampleId || null, mode: state.mode, motionId: m.id
     };
     state.attempts.push(entry);
     state.pending = null;
