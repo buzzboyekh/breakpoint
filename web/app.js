@@ -6,7 +6,7 @@
 
   // ---------------------------------------------------------------- exact strings (copy.md)
   const T = {
-    eyebrow: "Today's motion",
+    eyebrow: "Tonight's question",
     youArgue: (s) => 'You argue: ' + s,
     theirArgument: 'Their argument',
     theirAttack: 'Their attack',
@@ -15,9 +15,9 @@
     helperAttack: 'They make their case. You take it apart.',
     helperDefend: 'They attack your point. You hold it.',
     prep: '30 seconds to think. 60 to take it apart.',
-    startAttack: 'Start 60s rebuttal',
+    startAttack: 'Start your 60s answer',
     startDefend: 'Start defence',
-    newMotion: 'New motion',
+    newMotion: 'New question',
     recorded: 'Recorded run',
     point: (n) => 'Point ' + n,
     listening: 'Listening…',
@@ -25,7 +25,7 @@
     camLoading: 'Getting the camera ready…',
     camBlocked: "Camera is off. You can still practise; we'll skip the delivery notes.",
     camBlockedBtn: 'Practise without camera',
-    micBlocked: "We can't hear you. Allow the microphone, or type your rebuttal.",
+    micBlocked: "We can't hear you. Allow the microphone, or type your answer.",
     typeInstead: 'Type instead',
     noWords: "We didn't catch any words. Try again a little louder.",
     titleBroke: "Here's where it broke",
@@ -48,19 +48,19 @@
     showModel: 'Show a model answer',
     compareHelper: 'Compare it with yours.',
     faceChange: (a, b) => 'Face touches: ' + a + ' → ' + b,
-    nextMotion: 'Next motion',
+    nextMotion: 'Next question',
     coachTitle: 'Your class this week',
     sample: 'SAMPLE',
     mostCommon: 'Most common break',
     review: 'Office hours',
-    officeHours: 'Office hours',
+    officeHours: 'Who needs ten minutes with me',
     reviewHelper: "Students who need a check-in with you.",
     officeHoursHelper: "Students who need a check-in with you.",
     agree: 'Agree',
     disagree: 'Disagree',
     // Homework (copy.md "Homework link", "Student entry", "Coach view")
     hwCreate: 'Create homework link',
-    hwMotion: 'Motion',
+    hwMotion: "Tonight's question",
     hwMode: 'Mode',
     hwHelper: "Students don't need an account.",
     hwCopy: 'Copy link',
@@ -590,7 +590,9 @@
       h('div', { class: 'mc-eyebrow' },
         h('span', { class: 'label' }, hwk ? T.hwEyebrow : T.eyebrow),
         h('span', { class: 'chip holds' }, T.youArgue(sideLabel(m.side)))),
-      h('h1', { id: 'motion-title' }, m.motion),
+      h('h1', { class: 'pitch', id: 'pitch-title' }, 'Homework you do out loud.'),
+      h('p', { class: 'pitch-sub' }, "AI can write the essay. It can't think out loud for you. Say your answer, get challenged, fix the weak spot, then take the question home."),
+      h('h2', { class: 'q-line', id: 'motion-title' }, m.motion),
       toggle, modeHelp,
       h('div', null, h('span', { class: 'label' }, mode === 'defend' ? T.theirAttack : (mode === 'challenge' ? T.theChallenge : T.theirArgument))),
       pointCards(m, mode),
@@ -1219,7 +1221,7 @@
         card.append(h('div', { class: 'th-saved', role: 'status' },
           h('div', { class: 'th-head' },
             h('span', { class: 'chip chip-hold' }, h('span', { class: 'tick', 'aria-hidden': 'true' }), 'Saved'),
-            h('h2', { id: 'th-title', class: 'th-title' }, 'Take it home')),
+            h('h2', { id: 'th-title', class: 'th-title' }, 'Take it home: ask someone tonight')),
           h('p', { class: 'th-q' }, q),
           saidText ? h('p', { class: 'th-ans' }, '“' + saidText + '”') : null,
           changedVal ? h('p', { class: 'muted' }, 'Did it change your view? ' + changedVal) : null));
@@ -1272,7 +1274,7 @@
 
       add(card, [
         h('div', { class: 'th-head' },
-          h('h2', { id: 'th-title', class: 'th-title' }, 'Take it home')),
+          h('h2', { id: 'th-title', class: 'th-title' }, 'Take it home: ask someone tonight')),
         h('p', { class: 'th-q' }, q),
         h('div', { class: 'field' },
           h('label', { for: 'th-said', class: 'field-label' }, 'What did they say?'),
@@ -1794,7 +1796,7 @@
           h('td', null, s.last_break === 'none' ? h('span', { class: 'chip chip-hold' }, T.holds) : shortLabel(s.last_break)),
           h('td', { class: 'num' }, s.tries != null ? String(s.tries) : ''))))));
 
-    add(box, [breaksCard, reviewCard, classCard]);
+    add(box, [reviewCard, classCard, breaksCard]);
     requestAnimationFrame(() => requestAnimationFrame(() => {
       $$('.bar-fill', box).forEach((b) => b.style.setProperty('--w', b.getAttribute('data-w')));
     }));
@@ -1804,7 +1806,7 @@
     const r = item.result || {};
     const brk = r.break || {};
     const m = motionById(item.motion_id);
-    const motionName = item.motion || motionShort(m) || item.motion_id || 'Motion';
+    const motionName = item.motion || motionShort(m) || item.motion_id || 'Question';
     const sName = firstName(item.student || item.name || 'Student');
     const label = item.break_label || breakLabel(brk, item.mode);
     const triesCount = item.tries || item.attempt || 1;

@@ -34,12 +34,12 @@
 </header>
 
 <main id="main" tabindex="-1">
-  <!-- 1. Motion card (rendered by app.js) -->
+  <!-- 1. First screen: the question card (rendered by app.js) -->
   <section id="screen-motion" class="screen" data-screen="motion" hidden></section>
 
   <!-- 2. Live: static shell, because the video element must persist between attempts -->
   <section id="screen-live" class="screen" data-screen="live" aria-labelledby="live-title" hidden>
-    <h1 id="live-title" class="sr-only">Your rebuttal</h1>
+    <h1 id="live-title" class="sr-only">Your answer</h1>
     <div class="lv">
       <section class="panel lv-cam" id="cam" aria-label="Your posture, drawn as text">
         <!-- the real camera stays in the page, playing but invisible: body.js reads its frames -->
@@ -61,7 +61,7 @@
         </div>
       </section>
       <aside class="panel side" aria-label="Timer and transcript">
-        <div class="side-top"><span class="label" id="live-kind">Rebuttal</span><span id="live-badges" class="badges"></span></div>
+        <div class="side-top"><span class="label" id="live-kind">Your answer</span><span id="live-badges" class="badges"></span></div>
         <p class="timer" role="timer"><b id="live-elapsed">0:00</b><span>/ 1:00</span></p>
         <div class="bar" aria-hidden="true"><i id="live-bar"></i></div>
         <span class="label" id="live-points-label">Their points</span>
@@ -73,7 +73,7 @@
         </div>
         <div class="transcript" id="transcript"></div>
         <div class="typebox" id="typebox" hidden>
-          <label for="type-input" class="sr-only">Your rebuttal</label>
+          <label for="type-input" class="sr-only">Your answer</label>
           <textarea id="type-input" rows="5" spellcheck="true"></textarea>
         </div>
         <div class="done">
@@ -90,6 +90,8 @@
   <section id="screen-second" class="screen" data-screen="second" hidden></section>
   <section id="screen-coach" class="screen" data-screen="coach" hidden></section>
 </main>
+
+<p class="site-foot">AI finds the gap. People close it.</p>
 
 <div id="announcer" class="sr-only" aria-live="polite"></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>

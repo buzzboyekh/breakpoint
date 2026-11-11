@@ -1236,10 +1236,10 @@ def _not_a_rebuttal(ctx):
     on_topic = _kw_hit(words, kws) or any(_ordinal_ref(words, i) for i in range(len(ctx.ids)))
     down = bool(_DOWN.search(ctx.transcript))
     if down and not on_topic:
-        return ("That didn't sound like a rebuttal yet", "Want to try their first point?",
+        return ("That didn't sound like an answer yet", "Want to try their first point?",
                 "If this feels hard, that's normal: ask your coach.")
     if not on_topic and len(words) < 25:
-        return ("That didn't sound like a rebuttal yet", "Want to try their first point?", "")
+        return ("That didn't sound like an answer yet", "Want to try their first point?", "")
     return None
 
 
