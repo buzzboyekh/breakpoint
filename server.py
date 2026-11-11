@@ -18,6 +18,7 @@ WEB = ROOT / "web"
 DATA = ROOT / "data"
 DATA.mkdir(exist_ok=True)
 ATTEMPTS = DATA / "attempts.json"
+ASSIGNMENTS = DATA / "assignments.json"
 PORT = int(os.environ.get("PORT", "8765"))
 
 sys.path.insert(0, str(ROOT))
@@ -67,6 +68,36 @@ def save_attempts(items):
     os.replace(tmp, ATTEMPTS)
 
 
+def load_assignments():
+    try:
+        return json.loads(ASSIGNMENTS.read_text())
+    except Exception:
+        return []
+
+
+def save_assignments(items):
+    tmp = ASSIGNMENTS.with_suffix(".tmp")
+    tmp.write_text(json.dumps(items, ensure_ascii=False, indent=1))
+    os.replace(tmp, ASSIGNMENTS)
+
+
+def assignment_summary(a, attempts):
+    """Who did the homework and where it broke: per student, tries and whether the last try held."""
+    mine = [t for t in attempts if t.get("assignment_id") == a["id"]]
+    people = {}
+    for t in mine:
+        p = people.setdefault(t.get("student") or "Student", {"name": t.get("student") or "Student", "tries": 0,
+                                                              "first_break": None, "last_break": None})
+        p["tries"] += 1
+        b = ((t.get("result") or {}).get("break") or {}).get("type")
+        if p["first_break"] is None:
+            p["first_break"] = b
+        p["last_break"] = b
+    for p in people.values():
+        p["fixed"] = p["first_break"] not in (None, "none") and p["last_break"] == "none"
+    return {**a, "submissions": list(people.values()), "attempts": len(mine)}
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "Breakpoint/0.1"
 
@@ -103,6 +134,20 @@ class Handler(BaseHTTPRequestHandler):
             if engine_motions and hasattr(engine_motions, "list_motions"):
                 return self._json(200, engine_motions.list_motions())
             return self._json(503, {"error": "motions not ready"})
+        if path == "/api/assignments":
+            with _lock:
+                items, attempts = load_assignments(), load_attempts()
+            return self._json(200, [assignment_summary(a, attempts) for a in reversed(items)])
+        if path.startswith("/api/assignments/"):
+            aid = path.rsplit("/", 1)[-1]
+            with _lock:
+                items, attempts = load_assignments(), load_attempts()
+            for a in items:
+                if a["id"] == aid:
+                    return self._json(200, assignment_summary(a, attempts))
+            return self._json(404, {"error": "assignment not found"})
+        if path.startswith("/a/"):  # a shareable assignment link opens the app with that assignment
+            return self._static("/index.html")
         if path == "/api/class":
             with _lock:
                 items = load_attempts()
@@ -143,10 +188,24 @@ class Handler(BaseHTTPRequestHandler):
                 item = {"id": uuid.uuid4().hex[:10], "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
                         "motion_id": body.get("motion_id"), "transcript": body.get("transcript", "")[:5000],
                         "result": body.get("result"), "body": body.get("body"),
-                        "student": "You"}
+                        "assignment_id": body.get("assignment_id"), "attempt": body.get("attempt"),
+                        "student": (body.get("student") or "You")[:40]}
                 items.append(item)
                 save_attempts(items[-200:])
             return self._json(200, {"ok": True, "id": item["id"]})
+        if path == "/api/assignments":
+            motion_id = body.get("motion_id")
+            if not motion_id:
+                return self._json(400, {"error": "motion_id required"})
+            item = {"id": uuid.uuid4().hex[:6], "motion_id": motion_id, "mode": body.get("mode") or "attack",
+                    "title": (body.get("title") or "")[:120], "due": (body.get("due") or "")[:40],
+                    "created": time.strftime("%Y-%m-%dT%H:%M:%S")}
+            with _lock:
+                items = load_assignments()
+                items.append(item)
+                save_assignments(items[-200:])
+            host = self.headers.get("Host") or f"127.0.0.1:{PORT}"
+            return self._json(200, {**item, "url": f"http://{host}/a/{item['id']}"})
         if path == "/api/review":
             with _lock:
                 items = load_attempts()

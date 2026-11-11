@@ -74,6 +74,16 @@ AnalyzeResult gains "model_answer": string|null (null unless attempt >= 2 and st
 - Exact UI strings: ~/Claude/Projects/hackathons/c0mpiled-18/design-marketing/copy.md (ui uses them as written), including the mode toggle ("Attack their argument" / "Defend your point"), "Show a model answer" (after one retry only, helper "Compare it with yours."), and the low-confidence line "Not sure about this one. Check with your coach."
 - Second-try screen: same motion, same exchange; shows the before/after body line "Face touches: 4 → 1" (from BodyTrack counts of attempt 1 and 2) next to the chain comparison. The body beat is REQUIRED in the video.
 
+## Homework first (Buz approved 18:55; the product is speaking homework, the app is the delivery)
+- The hero is the STUDENT improving: hint -> retry -> the weak link holds. The coach view is a small supporting panel, never the hero.
+- Launch-tomorrow test: a teacher makes a shareable assignment link (pasteable into LINE, Google Classroom or Canvas); the student opens it, enters a first name, does the exercise with retries; the coach sees who did it and what broke. No platform plugins.
+- Assignment API (server, lead):
+  - POST /api/assignments {"motion_id","mode","title","due"} -> {"id","motion_id","mode","title","due","created","url":"http://host/a/<id>"}
+  - GET  /api/assignments -> [assignment + {"submissions":[{"name","tries","first_break","last_break","fixed"}],"attempts":n}]
+  - GET  /api/assignments/<id> -> one assignment with submissions
+  - GET  /a/<id> serves index.html; the app reads location.pathname "/a/<id>" and opens that assignment.
+  - POST /api/attempts also takes "assignment_id", "attempt" and "student" (first name only).
+
 ## API
 - GET  /api/health -> {"gmi":true|false,"model":"...","mode":"live|replay"}
 - GET  /api/motions -> [Motion] (at least 3 presets)
