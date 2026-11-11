@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Breakpoint · Live (preview)</title>
+<link rel="stylesheet" href="app.css">
+<style>
+  .grid { display: grid; grid-template-columns: 1fr 420px; gap: 20px; min-height: 0; }
+  .cam { position: relative; overflow: hidden; display: grid; place-items: center; }
+  pre#ascii { margin: 0; font-family: var(--mono); font-size: 11px; line-height: 11px; letter-spacing: 1.5px;
+    background: linear-gradient(180deg, #ffffff 0%, #c9ced5 55%, #6f7680 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 6px rgba(255,255,255,.25)); }
+  .baseline { position: absolute; left: 8%; right: 8%; top: 49%; border-top: 1px dashed rgba(255,255,255,.18); }
+  .baseline span { position: absolute; right: 0; top: -22px; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+  .camlabel { position: absolute; left: 22px; bottom: 18px; right: 22px; display: flex; justify-content: space-between; align-items: center; }
+  .priv { font-size: 12.5px; color: var(--text-2); max-width: 520px; line-height: 1.45; }
+  .dots { display: flex; gap: 16px; font-size: 13px; color: var(--text-2); }
+  .dots span { display: inline-flex; align-items: center; gap: 7px; }
+  .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--text); box-shadow: 0 0 8px rgba(255,255,255,.5); }
+  .dots i.check { background: transparent; border: 1.5px solid var(--text-2); box-shadow: none; }
+  .rec { position: absolute; left: 22px; top: 18px; display: flex; gap: 8px; align-items: center; font-family: var(--mono); font-size: 12px; color: var(--text-2); }
+  .rec i { width: 8px; height: 8px; border-radius: 50%; background: #fff; box-shadow: 0 0 12px rgba(255,255,255,.8); }
+  .side { padding: 26px 28px; display: flex; flex-direction: column; gap: 18px; }
+  .timer { display: flex; align-items: baseline; gap: 10px; font-family: var(--mono); }
+  .timer b { font-size: 76px; font-weight: 500; letter-spacing: -0.04em; color: var(--text); }
+  .timer span { font-size: 22px; color: var(--text-3); }
+  .bar { height: 3px; background: rgba(255,255,255,.1); border-radius: 3px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 70%; background: linear-gradient(90deg, #8d939c, #fff); }
+  .targets { display: grid; gap: 8px; }
+  .target { font-size: 14px; color: var(--text-2); display: grid; grid-template-columns: 34px 1fr; gap: 8px; }
+  .target b { font-family: var(--mono); font-size: 11px; color: var(--text-3); padding-top: 2px; }
+  .transcript { margin-top: 2px; display: grid; gap: 8px; font-size: 15px; line-height: 1.5; color: var(--text-3); }
+  .transcript p { margin: 0; }
+  .transcript p.now { color: var(--text); }
+  .transcript p.now::after { content: "▍"; color: var(--text-2); margin-left: 2px; }
+  .done { margin-top: auto; display: flex; gap: 12px; align-items: center; }
+</style></head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div class="wordmark"><span class="ember"></span>breakpoint <span class="zh">破綻</span></div>
+    <div class="crumb">Homework · <b>Ban phones in class</b> · You argue: Against · Try 1</div>
+    <div class="who"><span class="avatar">K</span>Kun</div>
+  </div>
+  <div class="grid">
+    <section class="panel cam" aria-label="Your posture, drawn as text">
+      <div class="rec"><i></i>Listening</div>
+      <pre id="ascii" aria-hidden="true"></pre>
+      <div class="baseline"><span>your sit-tall line</span></div>
+      <div class="camlabel">
+        <div class="priv">Your camera video never leaves this device. Your voice is transcribed by the browser’s speech service.</div>
+        <div class="dots"><span><i></i>Posture</span><span><i class="check"></i>Hands</span><span><i></i>Facing the screen</span></div>
+      </div>
+    </section>
+    <aside class="panel side">
+      <span class="label">Rebuttal</span>
+      <div class="timer"><b>0:42</b><span>/ 1:00</span></div>
+      <div class="bar"><i></i></div>
+      <span class="label" style="margin-top:6px">Their points</span>
+      <div class="targets">
+        <div class="target"><b>P1</b><span>Phones in class make students learn less.</span></div>
+        <div class="target"><b>P2</b><span>Phones bring bullying into the classroom.</span></div>
+      </div>
+      <span class="label" style="margin-top:6px">What the judge hears</span>
+      <div class="transcript">
+        <p>Phones can go on silent. The problem is notifications,</p>
+        <p>and schools can switch those off without a ban.</p>
+        <p class="now">Also, students need phones for emergencies, so</p>
+      </div>
+      <div class="done"><button class="btn primary">I’m done</button><span class="kbd">space</span></div>
+    </aside>
+  </div>
+</div>
+<script>
+// Draw a seated speaker (head, neck, shoulders, raised hand) and convert brightness to characters.
+const W = 96, H = 50, c = document.createElement('canvas'); c.width = W*4; c.height = H*8;
+const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0,0,c.width,c.height);
+const grad = g.createRadialGradient(c.width*0.5, c.height*0.32, 10, c.width*0.5, c.height*0.45, c.width*0.6);
+grad.addColorStop(0, '#fff'); grad.addColorStop(1, '#3a3a3a'); g.fillStyle = grad;
+g.beginPath(); g.ellipse(c.width*0.5, c.height*0.28, 48, 60, 0, 0, Math.PI*2); g.fill();             // head
+g.fillRect(c.width*0.5-20, c.height*0.36, 40, 40);                                                    // neck
+g.beginPath(); g.moveTo(c.width*0.18, c.height); g.quadraticCurveTo(c.width*0.2, c.height*0.52, c.width*0.5, c.height*0.47);
+g.quadraticCurveTo(c.width*0.8, c.height*0.52, c.width*0.82, c.height); g.fill();                      // shoulders and torso
+g.lineWidth = 34; g.lineCap = 'round'; g.strokeStyle = grad;
+g.beginPath(); g.moveTo(c.width*0.76, c.height*0.62); g.lineTo(c.width*0.86, c.height*0.78); g.lineTo(c.width*0.74, c.height*0.66); g.stroke(); // gesturing hand
+const d = g.getImageData(0,0,c.width,c.height).data, chars = " .:-=+*#%@";
+let out = '';
+for (let y = 0; y < H; y++) { for (let x = 0; x < W; x++) {
+  const px = (Math.floor(y*8+4)*c.width + Math.floor(x*4+2))*4; const v = d[px]/255;
+  const n = (Math.sin(x*12.9898 + y*78.233)*43758.5453) % 1; // fixed dither
+  const lv = v < 0.2 ? 0 : v; out += chars[Math.max(0, Math.min(chars.length-1, Math.floor((lv + (lv ? Math.abs(n)*0.12 : 0)) * (chars.length-1))))];
+} out += '\n'; }
+document.getElementById('ascii').textContent = out;
+</script>
+</body></html>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Breakpoint · Second try (preview)</title>
+<link rel="stylesheet" href="app.css">
+<style>
+  .stage { display: grid; grid-template-rows: auto 1fr auto; gap: 20px; min-height: 0; }
+  .head { display: flex; align-items: end; justify-content: space-between; padding: 6px 4px 0; }
+  .head h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 72px; line-height: 1; letter-spacing: -0.02em; }
+  .head .big { font-family: var(--serif); font-size: 34px; color: var(--text-2); }
+  .head .big b { color: var(--text); font-weight: 400; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; min-height: 0; }
+  .col { padding: 26px 28px; display: flex; flex-direction: column; gap: 16px; }
+  .col.before { opacity: .72; }
+  .col h2 { margin: 0; font-size: 15px; font-weight: 500; color: var(--text-2); display: flex; justify-content: space-between; align-items: center; }
+  .pt { display: grid; grid-template-columns: 1fr 70px 1fr; align-items: center; }
+  .card { padding: 14px 16px; border-radius: 12px; border: 1px solid var(--rim); background: rgba(255,255,255,.02); font-size: 14px; line-height: 1.4; color: var(--text-2); min-height: 96px; display: grid; gap: 8px; align-content: start; }
+  .card .claim { font-family: var(--serif); font-size: 19px; color: var(--text); line-height: 1.15; }
+  .card.empty { border-style: dashed; color: var(--text); }
+  .wire { height: 2px; position: relative; }
+  .wire.ok { background: linear-gradient(90deg, rgba(236,238,241,.25), rgba(236,238,241,.85)); }
+  .wire.ok::after { content: ""; position: absolute; right: -4px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--text); box-shadow: 0 0 12px rgba(255,255,255,.5); }
+  .wire.cut { background: linear-gradient(90deg, rgba(236,238,241,.25) 0 40%, transparent 40% 60%, rgba(236,238,241,.08) 60%); }
+  .wire.cut .ember { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); }
+  .col.after { box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 0 1px rgba(255,255,255,.06), 0 40px 90px -40px rgba(255,255,255,.12); }
+  .deliv { display: flex; gap: 26px; font-size: 14px; color: var(--text-2); margin-top: auto; padding-top: 14px; border-top: 1px solid var(--rim); }
+  .deliv b { color: var(--text); font-weight: 500; }
+  .jn { margin: 6px 0 0; font-family: var(--serif); font-size: 26px; line-height: 1.2; color: var(--text); }
+  .jn .label { font-family: var(--mono); font-size: 11px; }
+  .bottom { display: flex; justify-content: space-between; align-items: center; }
+  .bottom .note { font-size: 14px; color: var(--text-3); }
+</style></head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div class="wordmark"><span class="ember"></span>breakpoint <span class="zh">破綻</span></div>
+    <div class="crumb">Homework · <b>Ban phones in class</b> · You argue: Against · Try 2</div>
+    <div class="who"><span class="avatar">K</span>Kun</div>
+  </div>
+  <div class="stage">
+    <div class="head"><h1>Second try</h1><div class="big"><b>Fixed in 2 tries.</b> Both points answered.</div></div>
+    <div class="cols">
+      <section class="panel col before" aria-label="Try 1">
+        <h2>Try 1 <span class="chip breaks"><span class="ember"></span>Breaks</span></h2>
+        <div class="pt"><div class="card"><span class="label">Their point 1</span><span class="claim">Phones make students learn less.</span></div><div class="wire ok"></div><div class="card">Phones can go on silent; schools can switch notifications off.</div></div>
+        <div class="pt"><div class="card"><span class="label">Their point 2</span><span class="claim">Phones bring bullying into class.</span></div><div class="wire cut"><span class="ember"></span></div><div class="card empty">Dropped their second argument</div></div>
+        <p class="jn"><span class="label">Judge’s note</span><br>You took out their first point. Their second point is still standing.</p>
+        <div class="deliv"><span>Hands near your face <b>×4</b></span><span>0:42 <b>shoulders forward</b></span></div>
+      </section>
+      <section class="panel col after" aria-label="Try 2">
+        <h2>Try 2 <span class="chip holds"><span class="tick"></span>Holds</span></h2>
+        <div class="pt"><div class="card"><span class="label">Their point 1</span><span class="claim">Phones make students learn less.</span></div><div class="wire ok"></div><div class="card">Phones can go on silent; schools can switch notifications off.</div></div>
+        <div class="pt"><div class="card"><span class="label">Their point 2</span><span class="claim">Phones bring bullying into class.</span></div><div class="wire ok"></div><div class="card">Bullying lives in the group chat after school too. A classroom ban moves it, it doesn’t stop it; teach reporting instead.</div></div>
+        <p class="jn"><span class="label">Judge’s note</span><br>Both points answered. Your answer to point 2 explains why: a ban moves the bullying to the group chat, it doesn’t stop it.</p>
+        <div class="deliv"><span>Face touches <b>4 → 1</b></span><span>Posture <b>held</b></span></div>
+      </section>
+    </div>
+    <div class="bottom"><span class="note">Model answer is now unlocked: compare it with yours.</span><div style="display:flex;gap:12px"><button class="btn ghost">Show a model answer</button><button class="btn primary">Next motion →</button></div></div>
+  </div>
+</div>
+</body></html>

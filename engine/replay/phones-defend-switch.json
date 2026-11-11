@@ -1,0 +1,71 @@
+{
+ "attempt": 1,
+ "mode": "defend",
+ "attacks": [],
+ "links": [
+  {
+   "arg": "A1",
+   "link": "claim",
+   "status": "untouched"
+  },
+  {
+   "arg": "A1",
+   "link": "reason",
+   "status": "untouched"
+  },
+  {
+   "arg": "A1",
+   "link": "evidence",
+   "status": "untouched"
+  },
+  {
+   "arg": "A1",
+   "link": "impact",
+   "status": "untouched"
+  },
+  {
+   "arg": "A2",
+   "link": "claim",
+   "status": "untouched"
+  },
+  {
+   "arg": "A2",
+   "link": "reason",
+   "status": "untouched"
+  },
+  {
+   "arg": "A2",
+   "link": "evidence",
+   "status": "untouched"
+  },
+  {
+   "arg": "A2",
+   "link": "impact",
+   "status": "untouched"
+  }
+ ],
+ "break": {
+  "type": "new_argument_while_defending",
+  "arg": null,
+  "link": null,
+  "label": "Switched arguments while defending",
+  "why": "They attacked your point, and you moved to \"phones are really important for safety\" instead of answering it."
+ },
+ "hint": "What exactly did they say was wrong with your point?",
+ "landed": "You gave a clear reason with a real example: \"If there is an emergency, parents need to call their kids\".",
+ "confidence": 0.88,
+ "model_answer": null,
+ "defence": {
+  "answered": false,
+  "quote": null,
+  "holds": false
+ },
+ "source": "replay",
+ "model": "recorded run",
+ "tokens": {
+  "in": 0,
+  "out": 0
+ },
+ "ms": 0,
+ "_model_answer": "They say we mostly play games. But in my class we use phones to look up words and check facts, and the teacher can lock games, so phones still help us learn faster."
+}

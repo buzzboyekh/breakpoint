@@ -1,0 +1,79 @@
+{
+ "attempt": 1,
+ "mode": "attack",
+ "attacks": [
+  {
+   "arg": "A1",
+   "link": "reason",
+   "quote": "But the problem is the notifications, not the phone",
+   "holds": true
+  },
+  {
+   "arg": "A1",
+   "link": "claim",
+   "quote": "phones help us look things up when we don't understand a word, so learning can be faster with a phone",
+   "holds": true
+  }
+ ],
+ "links": [
+  {
+   "arg": "A1",
+   "link": "claim",
+   "status": "broken"
+  },
+  {
+   "arg": "A1",
+   "link": "reason",
+   "status": "broken"
+  },
+  {
+   "arg": "A1",
+   "link": "evidence",
+   "status": "untouched"
+  },
+  {
+   "arg": "A1",
+   "link": "impact",
+   "status": "untouched"
+  },
+  {
+   "arg": "A2",
+   "link": "claim",
+   "status": "untouched"
+  },
+  {
+   "arg": "A2",
+   "link": "reason",
+   "status": "untouched"
+  },
+  {
+   "arg": "A2",
+   "link": "evidence",
+   "status": "untouched"
+  },
+  {
+   "arg": "A2",
+   "link": "impact",
+   "status": "untouched"
+  }
+ ],
+ "break": {
+  "type": "dropped_argument",
+  "arg": "A2",
+  "link": "claim",
+  "label": "Dropped their second argument",
+  "why": "You answered their first point (\"the problem is the notifications, not the phone\"), but their second point, bullying, is still standing."
+ },
+ "hint": "Their second point is still standing. What happens to it if you say nothing?",
+ "landed": "You split their reason from their claim: \"the problem is the notifications, not the phone\".",
+ "confidence": 0.86,
+ "model_answer": null,
+ "source": "replay",
+ "model": "recorded run",
+ "tokens": {
+  "in": 0,
+  "out": 0
+ },
+ "ms": 0,
+ "_model_answer": "Their second point is bullying. A classroom ban does not stop the group chat, because it keeps running at lunch and after school, so the targeted student still sees every message."
+}

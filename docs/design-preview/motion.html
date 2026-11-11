@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Breakpoint · Homework (preview)</title>
+<link rel="stylesheet" href="app.css">
+<style>
+  .stage { display: grid; grid-template-columns: 1fr 380px; gap: 20px; min-height: 0; }
+  .motion { padding: 40px 44px; display: flex; flex-direction: column; gap: 26px; position: relative; overflow: hidden; }
+  .eyebrow { display: flex; align-items: center; gap: 12px; }
+  .motion h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 64px; line-height: 1.02; letter-spacing: -0.015em; max-width: 920px; }
+  .side-chip { display: inline-flex; gap: 10px; align-items: center; }
+  .modes { display: inline-flex; border: 1px solid var(--rim-strong); border-radius: 999px; padding: 4px; gap: 4px; }
+  .modes span { padding: 8px 14px; border-radius: 999px; font-size: 13.5px; color: var(--text-2); }
+  .modes span.on { background: rgba(255,255,255,.1); color: var(--text); box-shadow: inset 0 1px 0 rgba(255,255,255,.12); }
+  .points { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .pt { padding: 20px 22px; border: 1px solid var(--rim); border-radius: 12px; background: rgba(255,255,255,.02); display: grid; gap: 10px; }
+  .pt .claim { font-family: var(--serif); font-size: 25px; line-height: 1.12; }
+  .pt .l { display: grid; grid-template-columns: 68px 1fr; gap: 10px; font-size: 14px; color: var(--text-2); line-height: 1.4; }
+  .pt .l b { font-family: var(--mono); font-weight: 400; font-size: 10.5px; letter-spacing: .14em; color: var(--text-3); padding-top: 3px; }
+  .go { display: flex; align-items: center; gap: 18px; margin-top: auto; }
+  .ring { width: 54px; height: 54px; border-radius: 50%; border: 2px solid rgba(255,255,255,.12); border-top-color: #fff; display: grid; place-items: center; font-family: var(--mono); font-size: 13px; color: var(--text-2); }
+  .help { font-size: 14px; color: var(--text-3); }
+  .entry { padding: 28px 28px; display: flex; flex-direction: column; gap: 16px; }
+  .entry h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .field { display: grid; gap: 8px; }
+  .field label { font-size: 13px; color: var(--text-2); }
+  .input { height: 48px; border-radius: 12px; border: 1px solid var(--rim-strong); background: rgba(0,0,0,.25); display: flex; align-items: center; padding: 0 16px; font-size: 16px; color: var(--text); }
+  .input::after { content: "▍"; color: var(--text-2); margin-left: 1px; }
+  .small { font-size: 13px; color: var(--text-3); line-height: 1.5; }
+  .from { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--rim); background: rgba(255,255,255,.02); }
+  .from .avatar { width: 30px; height: 30px; }
+  .zhmark { position: absolute; right: -10px; bottom: -70px; font-family: var(--zh); font-weight: 900; font-size: 300px; line-height: 1; color: transparent;
+    -webkit-text-stroke: 1px rgba(255,255,255,.07); pointer-events: none; }
+</style></head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div class="wordmark"><span class="ember"></span>breakpoint <span class="zh">破綻</span></div>
+    <div class="crumb">Homework from <b>Coach Kun</b> · due Sun</div>
+    <div class="who"><span class="avatar">K</span>Kun</div>
+  </div>
+  <div class="stage">
+    <section class="panel motion" aria-label="Today's motion">
+      <span class="zhmark" aria-hidden="true">破綻</span>
+      <div class="eyebrow"><span class="label">Today’s motion</span><span class="chip holds">You argue: Against</span></div>
+      <h1>This house would ban phones in middle-school classrooms.</h1>
+      <div class="modes" role="tablist"><span class="on">Attack their argument</span><span>Defend your point</span></div>
+      <div><span class="label">Their argument</span></div>
+      <div class="points">
+        <div class="pt"><span class="label">Point 1</span><div class="claim">Phones in class make students learn less.</div>
+          <div class="l"><b>REASON</b><span>Notifications pull attention away from the lesson.</span></div>
+          <div class="l"><b>IMPACT</b><span>Every lesson loses minutes of focus.</span></div></div>
+        <div class="pt"><span class="label">Point 2</span><div class="claim">Phones bring bullying into the classroom.</div>
+          <div class="l"><b>REASON</b><span>Group chats keep running during school.</span></div>
+          <div class="l"><b>IMPACT</b><span>Students who are targeted can’t escape it, even in class.</span></div></div>
+      </div>
+      <div class="go"><div class="ring">0:30</div><button class="btn primary">Start 60s rebuttal <span aria-hidden="true">→</span></button><span class="help">30 seconds to think. 60 to take it apart.</span></div>
+    </section>
+    <aside class="panel entry" aria-label="Homework from your coach">
+      <span class="label">Homework from your coach</span>
+      <div class="from"><span class="avatar">C</span><div><div style="font-size:14px">Coach Kun</div><div class="small">Attack · 1 motion · retries allowed</div></div></div>
+      <h2>Who’s practising?</h2>
+      <div class="field"><label for="n">First name only</label><div class="input" id="n">Kun</div></div>
+      <p class="small">Your coach sees your first name and how your tries went. No account needed.</p>
+      <button class="btn primary" style="align-self:flex-start">Start</button>
+      <p class="small" style="margin-top:auto">Your camera video never leaves this device. Your voice is transcribed by the browser’s speech service.</p>
+    </aside>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Breakpoint</title>
+<meta name="description" content="Find where your argument breaks, before your opponent does.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#090a0c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23090a0c'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%23ff8a4c' opacity='.25'/%3E%3Ccircle cx='16' cy='16' r='4.5' fill='%23fff3ea'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- fonts load without blocking the app: on bad Wi-Fi the fallbacks show and the app still starts -->
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Noto+Serif+TC:wght@700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="/tokens.css">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/look.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <a class="brand" href="#motion" aria-label="Breakpoint home">
+    <span class="wordmark"><span class="ember" aria-hidden="true"></span>breakpoint <span class="zh" lang="zh-Hant">破綻</span></span>
+  </a>
+  <p class="crumb" id="crumb"></p>
+  <div class="top-right">
+    <nav class="topnav" id="topnav" aria-label="Main">
+      <a href="#motion" data-nav="practice">Practise</a>
+      <a href="#coach" data-nav="coach">Coach view</a>
+    </nav>
+    <p class="who" id="who" hidden><span class="avatar" id="who-initial" aria-hidden="true"></span><span id="who-name"></span></p>
+  </div>
+</header>
+
+<main id="main" tabindex="-1">
+  <!-- 1. Motion card (rendered by app.js) -->
+  <section id="screen-motion" class="screen" data-screen="motion" hidden></section>
+
+  <!-- 2. Live: static shell, because the video element must persist between attempts -->
+  <section id="screen-live" class="screen" data-screen="live" aria-labelledby="live-title" hidden>
+    <h1 id="live-title" class="sr-only">Your rebuttal</h1>
+    <div class="lv">
+      <section class="panel lv-cam" id="cam" aria-label="Your posture, drawn as text">
+        <!-- the real camera stays in the page, playing but invisible: body.js reads its frames -->
+        <video id="cam-video" class="lv-video" autoplay muted playsinline aria-hidden="true"></video>
+        <p class="rec" id="live-status"><i aria-hidden="true"></i><span id="live-status-text">Listening…</span></p>
+        <pre id="ascii" aria-hidden="true"></pre>
+        <div class="cam-state" id="cam-state" hidden>
+          <p id="cam-state-text">Getting the camera ready…</p>
+          <button type="button" class="btn ghost" id="cam-state-btn" hidden>Practise without camera</button>
+        </div>
+        <p class="mic-hint" id="mic-hint" hidden>Speak toward the laptop.</p>
+        <div class="camlabel">
+          <p class="priv">Your camera video never leaves this device. Your voice is transcribed by the browser's speech service.</p>
+          <ul class="dots" id="body-dots" hidden aria-label="Body tracking">
+            <li data-k="posture" title="Posture"><i aria-hidden="true"></i>Posture</li>
+            <li data-k="hands" title="Hands"><i aria-hidden="true"></i>Hands</li>
+            <li data-k="facing" title="Facing the screen"><i aria-hidden="true"></i>Facing the screen</li>
+          </ul>
+        </div>
+      </section>
+      <aside class="panel side" aria-label="Timer and transcript">
+        <div class="side-top"><span class="label" id="live-kind">Rebuttal</span><span id="live-badges" class="badges"></span></div>
+        <p class="timer" role="timer"><b id="live-elapsed">0:00</b><span>/ 1:00</span></p>
+        <div class="bar" aria-hidden="true"><i id="live-bar"></i></div>
+        <span class="label" id="live-points-label">Their points</span>
+        <div class="targets" id="live-points"></div>
+        <span class="label">What the judge hears</span>
+        <div class="live-msg" id="live-msg" role="status" hidden>
+          <p id="live-msg-text"></p>
+          <div class="live-msg-actions" id="live-msg-actions"></div>
+        </div>
+        <div class="transcript" id="transcript"></div>
+        <div class="typebox" id="typebox" hidden>
+          <label for="type-input" class="sr-only">Your rebuttal</label>
+          <textarea id="type-input" rows="5" spellcheck="true"></textarea>
+        </div>
+        <div class="done">
+          <button type="button" class="btn primary" id="btn-done">I'm done</button>
+          <span class="kbd" aria-hidden="true">space</span>
+          <button type="button" class="btn ghost" id="btn-type">Type instead</button>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 3. Report, 4. Second try, 5. Coach view (rendered by app.js) -->
+  <section id="screen-report" class="screen" data-screen="report" hidden></section>
+  <section id="screen-second" class="screen" data-screen="second" hidden></section>
+  <section id="screen-coach" class="screen" data-screen="coach" hidden></section>
+</main>
+
+<div id="announcer" class="sr-only" aria-live="polite"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<!-- absolute paths: the same page is served at /a/<id> for homework links -->
+<script src="/speech.js" defer></script>
+<script src="/chain.js" defer></script>
+<script src="/body.js" defer></script>
+<script src="/app.js" defer></script>
+</body>
+</html>

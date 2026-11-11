@@ -1,0 +1,79 @@
+{
+ "attempt": 1,
+ "mode": "attack",
+ "attacks": [
+  {
+   "arg": "A1",
+   "link": "claim",
+   "quote": "Phones are not bad, everyone has a phone now",
+   "holds": false
+  },
+  {
+   "arg": "A2",
+   "link": "claim",
+   "quote": "And bullying happens anyway",
+   "holds": false
+  }
+ ],
+ "links": [
+  {
+   "arg": "A1",
+   "link": "claim",
+   "status": "attacked"
+  },
+  {
+   "arg": "A1",
+   "link": "reason",
+   "status": "untouched"
+  },
+  {
+   "arg": "A1",
+   "link": "evidence",
+   "status": "untouched"
+  },
+  {
+   "arg": "A1",
+   "link": "impact",
+   "status": "untouched"
+  },
+  {
+   "arg": "A2",
+   "link": "claim",
+   "status": "attacked"
+  },
+  {
+   "arg": "A2",
+   "link": "reason",
+   "status": "untouched"
+  },
+  {
+   "arg": "A2",
+   "link": "evidence",
+   "status": "untouched"
+  },
+  {
+   "arg": "A2",
+   "link": "impact",
+   "status": "untouched"
+  }
+ ],
+ "break": {
+  "type": "no_link",
+  "arg": "A1",
+  "link": "claim",
+  "label": "No link",
+  "why": "You said \"everyone has a phone now\", but never showed why that means phones don't make students learn less."
+ },
+ "hint": "What would have to be true for \"everyone has a phone\" to mean students don't learn less?",
+ "landed": "You named both of their points: \"Their first point is wrong\" and \"bullying happens anyway\".",
+ "confidence": 0.8,
+ "model_answer": null,
+ "source": "replay",
+ "model": "recorded run",
+ "tokens": {
+  "in": 0,
+  "out": 0
+ },
+ "ms": 0,
+ "_model_answer": "Their first point says phones make us learn less. But the problem is notifications, not phones, because focus mode stops every buzz, so students keep their attention on the lesson."
+}

@@ -1,0 +1,84 @@
+{
+ "attempt": 2,
+ "mode": "attack",
+ "attacks": [
+  {
+   "arg": "A1",
+   "link": "reason",
+   "quote": "But the problem is the notifications, not the phone, because focus mode stops every buzz during the lesson",
+   "holds": true
+  },
+  {
+   "arg": "A2",
+   "link": "reason",
+   "quote": "A ban in class does not stop the group chat, because the chat keeps running at lunch and after school",
+   "holds": true
+  },
+  {
+   "arg": "A2",
+   "link": "impact",
+   "quote": "The ban moves the bullying out of sight, which makes it harder for teachers to notice and stop it",
+   "holds": true
+  }
+ ],
+ "links": [
+  {
+   "arg": "A1",
+   "link": "claim",
+   "status": "untouched"
+  },
+  {
+   "arg": "A1",
+   "link": "reason",
+   "status": "broken"
+  },
+  {
+   "arg": "A1",
+   "link": "evidence",
+   "status": "untouched"
+  },
+  {
+   "arg": "A1",
+   "link": "impact",
+   "status": "untouched"
+  },
+  {
+   "arg": "A2",
+   "link": "claim",
+   "status": "untouched"
+  },
+  {
+   "arg": "A2",
+   "link": "reason",
+   "status": "broken"
+  },
+  {
+   "arg": "A2",
+   "link": "evidence",
+   "status": "untouched"
+  },
+  {
+   "arg": "A2",
+   "link": "impact",
+   "status": "broken"
+  }
+ ],
+ "break": {
+  "type": "none",
+  "arg": null,
+  "link": null,
+  "label": "Every link you attacked holds",
+  "why": "You answered both points, and \"The ban moves the bullying out of sight\" turns their second point against them."
+ },
+ "hint": "If they said focus mode is easy to switch off, how would your first answer hold?",
+ "landed": "This time you answered their second point: \"the chat keeps running at lunch and after school\".",
+ "confidence": 0.84,
+ "model_answer": null,
+ "source": "replay",
+ "model": "recorded run",
+ "tokens": {
+  "in": 0,
+  "out": 0
+ },
+ "ms": 0
+}
