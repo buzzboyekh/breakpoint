@@ -34,6 +34,7 @@ _lock = threading.Lock()
 
 CONTENT_TYPES = {
     ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
+    ".mjs": "text/javascript; charset=utf-8",
     ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".json": "application/json",
     ".png": "image/png", ".jpg": "image/jpeg", ".wasm": "application/wasm",
     ".task": "application/octet-stream", ".ico": "image/x-icon", ".woff2": "font/woff2",
