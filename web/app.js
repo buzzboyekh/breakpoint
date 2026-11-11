@@ -532,7 +532,7 @@
       const coach = a.getAttribute('data-nav') === 'coach';
       if (coach === (name === 'coach')) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
-    document.title = name === 'coach' ? 'Breakpoint · Coach view' : name === 'next' ? "Breakpoint · What's next" : 'Breakpoint';
+    document.title = name === 'coach' ? 'Think Aloud · Coach view' : name === 'next' ? "Think Aloud · What's next" : 'Think Aloud';
     updateTopbar(name);
     if (prev !== name) {
       window.scrollTo(0, 0);
@@ -600,7 +600,7 @@
       mode === 'attack' ? h('span', { class: 'help' }, T.prep) : null);
 
     const card = h('section', { class: 'panel mc', 'aria-label': T.eyebrow },
-      h('span', { class: 'zhmark', 'aria-hidden': 'true' }, '破綻'),
+      h('span', { class: 'zhmark', 'aria-hidden': 'true' }, '開口'),
       h('div', { class: 'mc-eyebrow' },
         h('span', { class: 'label' }, hwk ? T.hwEyebrow : T.eyebrow),
         h('span', { class: 'chip holds' }, T.youArgue(sideLabel(m.side)))),
