@@ -14,7 +14,7 @@ MOTIONS = [
     {   # demo default: must stay first and exactly as in CONTRACT.md
         "id": "phones",
         "kind": "debate",
-        "motion": "This house would ban phones in middle-school classrooms.",
+        "motion": "Should middle schools ban phones in class?",
         "side": "CON",
         "opponent": {"args": [
             {"id": "A1", "claim": "Phones in class make students learn less",
@@ -34,7 +34,7 @@ MOTIONS = [
     {   # one statistic in evidence so "number_without_so_what" can fire
         "id": "homework",
         "kind": "debate",
-        "motion": "This house believes homework does more harm than good.",
+        "motion": "Does homework do more harm than good?",
         "side": "CON",
         "opponent": {"args": [
             {"id": "A1", "claim": "Homework takes away sleep and rest",
@@ -54,7 +54,7 @@ MOTIONS = [
     {
         "id": "uniforms",
         "kind": "debate",
-        "motion": "This house would make school uniforms optional.",
+        "motion": "Should school uniforms be optional?",
         "side": "PRO",
         "opponent": {"args": [
             {"id": "A1", "claim": "Uniforms stop teasing about clothes",

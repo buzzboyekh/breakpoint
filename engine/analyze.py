@@ -410,8 +410,9 @@ Return exactly this JSON shape:
  "break": {"type": "missed_the_challenge | off_point | no_link | ignored_best_counterpoint | no_condition | none", "arg": "A1, A2 or null", "link": "claim | reason | evidence | impact or null", "why": "..."},
  "landed": "...", "hint": "...?", "confidence": 0.8, "model_answer": null}"""
 
-MA_RETRY = ('this is a retry. If the break is not "none", write ONE way to say the fix: at most 40 words, '
-            'plain English a 12-year-old could say, fixing only this break. If the break is "none", null.')
+MA_RETRY = ('this is a retry. If the break is not "none", write ONE sentence FRAME with blanks, at most 25 words, '
+            'using ___ for the missing idea, e.g. "Their second point says ___, but ___ because ___." '
+            'Give the shape of the answer only: never fill the blanks with the argument itself. If the break is "none", null.')
 MA_FIRST = "null. This is a first try: the student must find the fix themselves."
 
 
@@ -619,6 +620,8 @@ def _ma_problems(s):
     out = []
     if len(s.split()) > 40:
         out.append("model_answer has %d words; the limit is 40" % len(s.split()))
+    if "___" not in s:
+        out.append("model_answer must be a sentence frame with ___ blanks, not a finished answer")
     if _SCORE.search(s):
         out.append("model_answer must not contain a score or grade")
     return out

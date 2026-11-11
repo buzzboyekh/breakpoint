@@ -15,7 +15,7 @@
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   var MSG = {
     listening: 'Listening…',
-    micBlocked: "We can't hear you. Allow the microphone, or type your rebuttal.",
+    micBlocked: "We can't hear you. Allow the microphone, or type your answer.",
     noWords: "We didn't catch any words. Try again a little louder."
   };
 

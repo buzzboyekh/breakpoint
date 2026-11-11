@@ -7,13 +7,13 @@
   // ---------------------------------------------------------------- exact strings (copy.md)
   const T = {
     eyebrow: "Tonight's question",
-    youArgue: (s) => 'You argue: ' + s,
-    theirArgument: 'Their argument',
+    youArgue: (s) => (s === 'For' ? 'You say yes. Answer them.' : 'You say no. Answer them.'),
+    theirArgument: 'Someone says',
     theirAttack: 'Their attack',
-    modeAttack: 'Attack their argument',
-    modeDefend: 'Defend your point',
-    helperAttack: 'They make their case. You take it apart.',
-    helperDefend: 'They attack your point. You hold it.',
+    modeAttack: 'Answer back',
+    modeDefend: 'Stand your ground',
+    helperAttack: 'They make their case. You answer it.',
+    helperDefend: 'They push back on your point. You stand your ground.',
     prep: '30 seconds to think. 60 to take it apart.',
     startAttack: 'Start your 60s answer',
     startDefend: 'Start defence',
@@ -34,18 +34,18 @@
     breaks: 'Breaks',
     hintTitle: 'One question before you try again',
     tryAgain: 'Try again',
-    seeHeard: 'See what the judge heard',
+    seeHeard: 'See what the check heard',
     delivery: 'Your delivery',
-    footer: (model, cost) => 'Judged by ' + model + ' on GMI · ' + cost,
-    slow: 'The judge is thinking a bit longer…',
-    judgeError: "The judge couldn't answer this time.",
+    footer: (model, cost) => 'Checked by ' + model + ' on GMI · ' + cost,
+    slow: 'The check is taking a bit longer…',
+    judgeError: "The check couldn't answer this time.",
     useRecorded: 'Use the recorded example',
     lowConf: 'Your coach will go through this one with you.',
     coachLine: 'Your coach will go through this one with you.',
     secondTitle: 'Second try',
     fixed: (n) => 'Fixed in ' + n + ' tries.',
     closer: 'Closer. One more try?',
-    showModel: 'Show a model answer',
+    showModel: 'Show a sentence starter',
     compareHelper: 'Compare it with yours.',
     faceChange: (a, b) => 'Face touches: ' + a + ' → ' + b,
     nextMotion: 'Next question',
@@ -85,8 +85,8 @@
     theChallenge: 'The challenge',
     checking: 'Checking every link…',
     attempt: (n) => 'Attempt ' + n,
-    oneWay: 'One way to say it',
-    heardTitle: 'What the judge heard',
+    oneWay: 'A sentence to start with',
+    heardTitle: 'What the check heard',
     classList: 'Class',
     colStudent: 'Student',
     colBreak: 'Last break',
@@ -122,7 +122,7 @@
     number_without_so_what: {
       label: 'A number with no "so what"',
       why: "You attacked their number but didn't say why it matters.",
-      hint: "If that number were true, would it change the judge's decision? Why?"
+      hint: "If that number were true, would it change anyone's mind? Why?"
     },
     missed_the_attack: { label: 'You answered a different point, not their attack' },
     missed_the_challenge: { label: 'Missed the challenge' },
@@ -204,7 +204,7 @@
       ],
       links: linksFor({ 'A1.reason': 'broken', 'A2.reason': 'broken', 'A2.impact': 'broken' }),
       break: { type: 'none', arg: null, link: null, label: 'Every link you attacked holds', why: 'You answered both of their points, and each answer says why.' },
-      hint: 'Which of your two answers would hurt their case most if the judge believed it?',
+      hint: 'Which of your two answers would hurt their case most?',
       landed: 'You answered both points, and each answer has a "because".',
       confidence: 0.88, source: 'replay', model: null, tokens: { in: 0, out: 0 }, ms: 0, model_answer: null
     },
@@ -234,7 +234,7 @@
   // Used only if /api/motions is not ready (engine still being built).
   const FALLBACK_MOTIONS = [{
     id: 'phones',
-    motion: 'This house would ban phones in middle-school classrooms.',
+    motion: 'Should middle schools ban phones in class?',
     side: 'CON',
     opponent: {
       args: [
@@ -1543,7 +1543,7 @@
           : unsure ? h('span', { class: 'chip standing' }, 'Check with coach')
             : h('span', { class: 'chip breaks' }, h('span', { class: 'ember', 'aria-hidden': 'true' }), T.breaks)),
       rows,
-      h('p', { class: 'jn' }, h('span', { class: 'label' }, "Judge's note"), note),
+      h('p', { class: 'jn' }, h('span', { class: 'label' }, "The check's note"), note),
       deliv.length ? h('div', { class: 'deliv' }, deliv, (attempt.sampleBody ? h('span', { class: 'badge' }, T.sample) : null)) : null);
   }
 

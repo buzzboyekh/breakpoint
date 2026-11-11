@@ -1,8 +1,8 @@
 # Breakpoint
 
-**An AI sparring partner that shows kids exactly where their argument breaks, then makes them fix it themselves.**
+**Homework you do out loud.** AI can do written homework in ten seconds, so Breakpoint sets homework a kid says out loud, and it ends with people.
 
-Speaking apps grade how you sound. Breakpoint checks whether your argument holds, link by link.
+**Say it. Fix it. Take it to a person.** A kid gets tonight's question and says an answer. Breakpoint shows the one weak spot, gives one hint (never the answer), and makes them try again. Then every kid leaves with one question to ask someone at home, and the coach gets a short list of who needs ten minutes. AI finds the gap. People close it.
 
 ▶ Demo video (2 min): {VIDEO_URL}
 
@@ -13,11 +13,12 @@ Kids learning to debate in English get seconds of feedback each in class, and th
 
 ## What it does
 0. **Homework link.** A coach creates a link and pastes it into LINE, Google Classroom or Canvas. Students open it and type a first name only; no accounts.
-1. **Spar.** Pick a motion. Breakpoint makes the other side's case as a chain (claim, reason, evidence, impact). Attack it, or defend your own point.
+1. **Say it.** Pick tonight's question. Breakpoint puts the other side's case as a chain (claim, reason, evidence, impact). Answer it back, or stand your ground on your own point.
 2. **Find the break.** Your spoken rebuttal is mapped onto their argument point by point. Each point shows *Holds* or *Breaks*, and the break is named: dropped argument, no link, switched argument while defending, or a number with no "so what". No scores.
-3. **Fix it yourself.** One hint, as a question. Then you try again. A model answer appears only after a retry.
+3. **Fix it yourself.** One hint, as a question. Then you try again. After a retry, a sentence starter with blanks appears (never the finished answer).
 4. **Delivery, on the device.** Posture, swaying and touching your face are tracked in the browser; at most two notes per try. Camera video never leaves the laptop.
-5. **Coach view.** Who did the homework, what broke first, and whether they fixed it ("Amy · 3 tries · Dropped their second argument → Fixed"); attempts the AI was unsure about say "Check with your coach".
+5. **Take it to a person.** Every kid leaves with one question to ask someone at home; what they said is saved for the coach. Anything not fixed in two tries, or that the AI was unsure about, goes to the coach's "Who needs ten minutes with me" list.
+6. **Coach view.** Who did the homework, what broke first, and whether they fixed it ("Amy · 3 tries · Dropped their second argument → Fixed"); attempts the AI was unsure about say "Check with your coach".
 
 ## How it works
 - `server.py`: Python standard library only; serves `web/` and the JSON API.
@@ -42,7 +43,7 @@ Without a key the app replays recorded runs of the sample speeches, labelled "Re
 - The class panel in the coach view is SAMPLE data; homework rows are real attempts made through a link.
 
 ## Privacy
-No accounts for kids; a homework link asks for a first name only. Camera video is processed in the browser and never uploaded. Voice is not: Chrome's speech recognition sends audio to Google's speech service, and the transcript is sent to GMI Cloud for the argument check.
+A first name, the transcript, body notes and take-home answers are stored on the coach's machine in `data/` (not in git). No accounts for kids; a homework link asks for a first name only. Camera video is processed in the browser and never uploaded. Voice is not: Chrome's speech recognition sends audio to Google's speech service, and the transcript is sent to GMI Cloud for the argument check.
 
 ## Built at
 c0mpiled-18, YC Startup School Hackathon, Taipei, 2026-11-11. Planning notes, research and the design kit (colour tokens and on-screen copy) were prepared before the build session; all code was written during it.
