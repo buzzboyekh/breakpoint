@@ -1305,67 +1305,115 @@
   }
 
   // ---------------------------------------------------------------- 4. second try
+  // One try as a column (design: retry.html): their points, a wire, what the student said.
+  function tryColumn(motion, attempt, n, isAfter, firstBody) {
+    const r = attempt.result;
+    const brk = r.break || {};
+    const type = breakType(r);
+    const unsure = isUnsure(r);
+    const ok = type === 'none' && !unsure;
+    const attacks = Array.isArray(r.attacks) ? r.attacks : [];
+    const both = type === 'dropped_argument' && /both/i.test(String(brk.label || ''));
+    const rows = (attempt.mode !== 'defend' && !(motion && motion.kind === 'challenge')) ? argsOf(motion).map((arg, i) => {
+      const mine = attacks.filter((x) => x.arg === arg.id);
+      const best = mine.find((x) => x.holds) || mine[0] || null;
+      const isBreak = !unsure && type !== 'none' && (brk.arg === arg.id || both);
+      const their = h('div', { class: 'rt-card' }, h('span', { class: 'label' }, 'Their point ' + (i + 1)), h('span', { class: 'claim' }, textOf(arg.claim)));
+      let wire, yours;
+      if (isBreak) {
+        wire = h('div', { class: 'wire cut' }, h('span', { class: 'w-line' }), h('span', { class: 'ember', 'aria-hidden': 'true' }));
+        yours = h('div', { class: 'rt-card empty' }, breakLabel(brk, 'attack'));
+      } else if (best) {
+        wire = h('div', { class: 'wire ' + (best.holds ? 'ok' : 'open') }, h('span', { class: 'w-line' }), best.holds ? h('span', { class: 'w-end' }) : null);
+        yours = h('div', { class: 'rt-card' }, h('span', { class: 'clamp' }, '“' + best.quote + '”'));
+      } else {
+        wire = h('div', { class: 'wire open' }, h('span', { class: 'w-line' }));
+        yours = h('div', { class: 'rt-card empty' }, 'No answer yet');
+      }
+      return h('div', { class: 'rt-pt' }, their, wire, yours);
+    }) : [h('div', { class: 'rt-card' + (ok ? '' : ' empty') }, ok ? breakLabel(brk, attempt.mode) : breakLabel(brk, attempt.mode))];
+
+    const note = ok ? (hasText(r.landed) ? r.landed.trim() : breakLabel(brk, attempt.mode))
+      : unsure ? T.lowConf
+        : (breakWhy(brk) || breakLabel(brk, attempt.mode));
+    const body = attempt.body;
+    const deliv = [];
+    if (body) {
+      const face = isAfter ? faceChangeText(firstBody, body) : null;
+      if (face) {
+        const parts = face.split(':');
+        deliv.push(h('span', null, parts[0], ' ', h('b', null, (parts[1] || '').trim())));
+      } else {
+        (body.marks || []).slice(0, 2).forEach((m) => {
+          const cnt = Number(m.n) || 0;
+          deliv.push(m.type === 'face_touch' && cnt > 1
+            ? h('span', null, (m.label || MARK_LABEL[m.type] || '') + ' ', h('b', null, '×' + cnt))
+            : h('span', null, (m.t != null ? m.t + ' ' : ''), h('b', null, String(m.label || MARK_LABEL[m.type] || '').toLowerCase())));
+        });
+      }
+      if (isAfter && !(body.marks || []).some((m) => m.type === 'slouch')) deliv.push(h('span', null, 'Posture ', h('b', null, 'held')));
+    }
+    return h('section', { class: 'panel rt-col ' + (isAfter ? 'after' : 'before'), 'aria-label': 'Try ' + n },
+      h('h2', null, 'Try ' + n,
+        ok ? h('span', { class: 'chip holds' }, h('span', { class: 'tick', 'aria-hidden': 'true' }), T.holds)
+          : unsure ? h('span', { class: 'chip standing' }, 'Check with coach')
+            : h('span', { class: 'chip breaks' }, h('span', { class: 'ember', 'aria-hidden': 'true' }), T.breaks)),
+      rows,
+      h('p', { class: 'jn' }, h('span', { class: 'label' }, "Judge's note"), note),
+      deliv.length ? h('div', { class: 'deliv' }, deliv, (attempt.sampleBody ? h('span', { class: 'badge' }, T.sample) : null)) : null);
+  }
+
   function renderSecond() {
     const root = $('#screen-second');
     root.textContent = '';
     const first = state.attempts[0];
     const latest = state.attempts[state.attempts.length - 1];
+    if (!first || !latest) { go('motion', { replace: true }); return; }
     const r1 = first.result, r2 = latest.result;
     const n = state.attempts.length;
     const fixed = breakType(r2) === 'none';
     const unsure = isUnsure(r2);
     const firstHeld = breakType(r1) === 'none';
-    const anim = !reducedMotion();
-    const d = (ms) => ({ '--d': (anim ? ms : 0) + 'ms' });
+    const motion = motionById(latest.motionId) || currentMotion();
 
-    let line, lineClass;
-    const chainPrintsUnsure = !!(getChain() && typeof getChain().compare === 'function');
-    if (unsure) { line = chainPrintsUnsure ? T.secondTitle : T.lowConf; lineClass = 'second-line is-closer'; }
-    else if (fixed && !firstHeld) { line = T.fixed(n); lineClass = 'second-line is-fixed'; }
-    else if (fixed) { line = T.titleHolds; lineClass = 'second-line is-fixed'; }
-    else { line = T.closer; lineClass = 'second-line is-closer'; }
+    let big;
+    if (unsure) big = h('div', { class: 'big' }, h('b', null, T.lowConf));
+    else if (fixed && !firstHeld) big = h('div', { class: 'big' }, h('b', null, T.fixed(n)), argsOf(motion).length > 1 && latest.mode !== 'defend' ? ' Both points answered.' : '');
+    else if (fixed) big = h('div', { class: 'big' }, h('b', null, T.titleHolds));
+    else big = h('div', { class: 'big' }, h('b', null, T.closer));
 
-    const sub = fixed
-      ? (hasText(r2.landed) ? r2.landed : '')
-      : breakLabel(r2.break, latest.mode) + (breakWhy(r2.break) ? '. ' + breakWhy(r2.break) : '');
-
-    const face = faceChangeText(first.body, latest.body) ? h('p', { class: 'face-change reveal', style: d(500) }, faceChangeText(first.body, latest.body)) : null;
-
-    const compareBox = h('div', { class: 'compare-box reveal', style: d(150) });
     const hint = (!fixed && hasText(r2.hint)) ? r2.hint.trim() : '';
     const modelId = 'model-answer';
     const model = (!fixed && hasText(r2.model_answer) && n >= 2)
-      ? h('div', { class: 'model-answer card', id: modelId, hidden: true },
-        h('p', { class: 'eyebrow' }, T.oneWay), h('p', { class: 'ma-text' }, r2.model_answer.trim()), h('p', { class: 'helper' }, T.compareHelper))
+      ? h('section', { class: 'panel model-answer', id: modelId, hidden: true },
+        h('span', { class: 'label' }, T.oneWay), h('p', { class: 'ma-text' }, r2.model_answer.trim()), h('p', { class: 'small' }, T.compareHelper))
       : null;
 
-    const actions = fixed
-      ? [state.assignment ? doneLine() : h('button', { type: 'button', class: 'btn primary', onclick: nextMotion }, T.nextMotion)]
+    const arrow = () => h('span', { class: 'arrow', 'aria-hidden': 'true' }, '→');
+    const btns = fixed
+      ? [state.assignment ? doneLine() : h('button', { type: 'button', class: 'btn primary', onclick: nextMotion }, T.nextMotion, arrow())]
       : [
-        h('button', { type: 'button', class: 'btn primary', onclick: () => tryAgain(latest) }, T.tryAgain),
         model ? h('button', {
           type: 'button', class: 'btn ghost', 'aria-expanded': 'false', 'aria-controls': modelId,
           onclick: (e) => { const open = model.hidden; model.hidden = !open; e.currentTarget.setAttribute('aria-expanded', String(open)); }
         }, T.showModel) : null,
-        state.assignment ? null : h('button', { type: 'button', class: 'btn btn-text', onclick: nextMotion }, T.nextMotion)
+        state.assignment ? null : h('button', { type: 'button', class: 'btn ghost', onclick: nextMotion }, T.nextMotion),
+        h('button', { type: 'button', class: 'btn primary', onclick: () => tryAgain(latest) }, T.tryAgain, arrow())
       ];
+    const noteText = fixed ? footerText(r2) : (hint || (model ? 'Model answer is now unlocked: compare it with yours.' : ''));
 
-    root.append(h('div', { class: 'second' },
-      h('div', { class: 'report-head' },
-        h('p', { class: 'eyebrow' }, T.secondTitle),
-        h('div', { class: 'badges' }, latest.recorded ? h('span', { class: 'badge' }, T.recorded) : null, latest.sampleBody && face ? h('span', { class: 'badge' }, T.sample) : null)),
-      h('div', { class: 'second-top' },
-        h('div', null,
-          h('h1', { class: lineClass + ' reveal', style: d(0) }, line),
-          sub ? h('p', { class: 'second-sub reveal', style: d(250) }, sub) : null,
-          hint ? h('p', { class: 'hint reveal', style: Object.assign({ 'margin-top': '12px' }, d(350)) }, hint) : null),
-        face),
-      compareBox,
-      h('div', { class: 'second-actions' }, actions),
+    root.append(h('div', { class: 'rt' + (reducedMotion() ? '' : ' anim') },
+      h('div', { class: 'rt-head' },
+        h('h1', null, T.secondTitle),
+        h('div', null, big,
+          h('div', { class: 'badges', style: { 'justify-content': 'flex-end', 'margin-top': '8px' } },
+            latest.recorded ? h('span', { class: 'badge' }, T.recorded) : null))),
+      h('div', { class: 'rt-cols' },
+        tryColumn(motion, first, 1, false, null),
+        tryColumn(motion, latest, n, true, first.body)),
+      h('div', { class: 'rt-bottom' }, h('span', { class: 'note' }, noteText), h('div', { class: 'btns' }, btns)),
       model,
-      h('footer', { class: 'report-foot' }, h('span', null, footerText(r2)))));
-
-    drawCompare(compareBox, motionById(latest.motionId) || currentMotion(), r1, r2, latest.mode, n);
+      fixed ? null : h('footer', { class: 'rp-foot' }, h('span', null, footerText(r2)))));
   }
 
   function drawCompare(box, motion, r1, r2, mode, n) {
