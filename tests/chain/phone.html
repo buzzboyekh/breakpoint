@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chain demo at 390px (SAMPLE)</title>
+<style>
+  body { margin: 0; background: #000; }
+  iframe { display: block; width: 390px; height: 7400px; border: 0; }
+  #out { position: absolute; left: 400px; top: 0; color: #fff; font: 12px monospace; width: 600px; }
+</style>
+</head>
+<body>
+<iframe id="f" src="demo.html?static=1"></iframe>
+<p id="out">waiting</p>
+<script>
+// Test harness only: shows demo.html in a 390px-wide frame (headless Chrome will not open a window under 500px).
+setTimeout(() => {
+  let msg = 'no access';
+  try { msg = document.getElementById('f').contentDocument.getElementById('check').textContent; } catch (e) { msg = 'error: ' + e.message; }
+  document.getElementById('out').textContent = msg;
+}, 3000);
+</script>
+</body>
+</html>

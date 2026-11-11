@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chain demo (SAMPLE)</title>
+<link rel="stylesheet" href="../../web/tokens.css">
+<style>
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-sans); font-size: var(--t-md); line-height: var(--lh-body); }
+  main { padding: var(--s-8); max-width: 1440px; margin: 0 auto; box-sizing: border-box; }
+  h1 { font-size: var(--t-xl); margin: 0 0 var(--s-2); }
+  h2 { font-size: var(--t-sm); color: var(--text-2); font-weight: 600; margin: 0 0 var(--s-3); }
+  section { margin: 0 0 var(--s-12); }
+  .report { display: grid; grid-template-columns: 3fr 2fr; gap: var(--s-6); align-items: start; }
+  .card { background: var(--surface); border-radius: var(--radius); padding: var(--s-6); }
+  .card p { margin: 0; }
+  .eyebrow { font-size: var(--t-sm); color: var(--text-2); margin-bottom: var(--s-2) !important; }
+  .q { font-size: var(--t-lg); }
+  #check { font-family: var(--font-mono); font-size: var(--t-sm); color: var(--text-2); margin: 0 0 var(--s-8); }
+  @media (max-width: 700px) { main { padding: var(--s-6) var(--s-4); } .report { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Chain diagram test (SAMPLE data)</h1>
+  <p id="check">Layout check: running</p>
+  <section><h2>SAMPLE 0 · motion card, no result yet</h2><div id="c0"></div></section>
+  <section><h2>SAMPLE 1 · dropped_argument on A2 (phones, attack)</h2>
+    <div class="report"><div id="c1"></div>
+      <div class="card"><p class="eyebrow">One question before you try again</p>
+        <p class="q">Their second point is still standing. What happens to it if you say nothing?</p></div></div></section>
+  <section><h2>SAMPLE 2 · no_link on A1</h2><div id="c2"></div></section>
+  <section><h2>SAMPLE 3 · none (every link holds)</h2><div id="c3"></div></section>
+  <section><h2>SAMPLE 4 · defend: switched to a new argument</h2><div id="c4"></div></section>
+  <section><h2>SAMPLE 5 · evidence present: a number with no "so what"</h2><div id="c5"></div></section>
+  <section><h2>SAMPLE 6 · compare (Try 1 = SAMPLE 1, Try 2 = SAMPLE 3)</h2><div id="c6"></div></section>
+  <section><h2>SAMPLE 7 · low confidence (0.45), padded container</h2><div id="c7" style="padding: 12px; background: var(--surface); border-radius: var(--radius);"></div></section>
+</main>
+<script src="../../web/chain.js"></script>
+<script>
+// TEST-FIXTURE: every motion, quote and number below is synthetic SAMPLE data.
+const LK = ['claim', 'reason', 'evidence', 'impact'];
+function links(map) { const out = []; ['A1', 'A2'].forEach(a => LK.forEach(l => out.push({ arg: a, link: l, status: map[a + ':' + l] || 'untouched' }))); return out; }
+const phones = { id: 'phones', motion: 'This house would ban phones in middle-school classrooms.', side: 'CON',
+  opponent: { args: [
+    { id: 'A1', claim: 'Phones in class make students learn less', reason: 'Notifications pull attention away from the lesson', evidence: '', impact: 'Every lesson loses minutes of focus' },
+    { id: 'A2', claim: 'Phones bring bullying into the classroom', reason: 'Group chats keep running during school', evidence: '', impact: "Students who are targeted can't escape it, even in class" }] },
+  attack_on_you: { target: 'Phones help students learn faster in class', attack: 'Students mostly use phones for games and chat, not for learning' } };
+const homework = { id: 'homework', motion: 'This house believes homework does more harm than good.', side: 'CON',
+  opponent: { args: [
+    { id: 'A1', claim: 'Homework makes students too tired to learn', reason: 'Long evenings of worksheets cut into sleep', evidence: 'SAMPLE survey: 56% of students lose sleep over homework', impact: "Tired students remember less of the next day's lesson" },
+    { id: 'A2', claim: 'Homework widens the gap between families', reason: 'Some parents can help and some cannot', evidence: '', impact: 'Students without help fall further behind' }] } };
+const dropped = { attempt: 1, source: 'replay', confidence: 0.86,
+  attacks: [{ arg: 'A1', link: 'reason', quote: 'the problem is the notifications, not the phone', holds: true },
+            { arg: 'A1', link: 'impact', quote: "phones help us look things up when we don't understand a word", holds: true }],
+  links: links({ 'A1:reason': 'broken', 'A1:impact': 'broken' }),
+  break: { type: 'dropped_argument', arg: 'A2', link: 'claim', label: 'Dropped their second argument', why: 'SAMPLE' } };
+const nolink = { attempt: 1, confidence: 0.8,
+  attacks: [{ arg: 'A1', link: 'claim', quote: 'Phones are not bad, everyone has a phone now', holds: false },
+            { arg: 'A2', link: 'claim', quote: 'bullying happens anyway', holds: false }],
+  links: links({ 'A1:claim': 'attacked', 'A2:claim': 'attacked' }),
+  break: { type: 'no_link', arg: 'A1', link: 'claim', label: 'No link: everyone having a phone does not prove phones help learning' } };
+const none = { attempt: 2, confidence: 0.9,
+  attacks: [{ arg: 'A1', link: 'reason', quote: 'focus mode stops every buzz during the lesson', holds: true },
+            { arg: 'A2', link: 'reason', quote: 'the chat keeps running at lunch and after school', holds: true },
+            { arg: 'A2', link: 'impact', quote: 'the student who is targeted still sees every message', holds: true }],
+  links: links({ 'A1:reason': 'broken', 'A2:reason': 'broken', 'A2:impact': 'broken' }),
+  break: { type: 'none', label: 'Every link you attacked holds' } };
+const defend = { attempt: 1, confidence: 0.82, links: [],
+  attacks: [{ arg: 'A1', link: 'claim', quote: 'phones are really important for safety. If there is an emergency, parents need to call their kids', holds: false }],
+  break: { type: 'new_argument_while_defending', label: 'Switched arguments while defending' } };
+const sowhat = { attempt: 1, confidence: 0.77,
+  attacks: [{ arg: 'A1', link: 'evidence', quote: 'that survey only asked one school', holds: true },
+            { arg: 'A2', link: 'reason', quote: 'teachers can run a homework club after school', holds: true }],
+  links: links({ 'A1:evidence': 'broken', 'A2:reason': 'broken' }),
+  break: { type: 'number_without_so_what', arg: 'A1', link: 'evidence', label: 'A number with no "so what"' } };
+
+const animate = !/static=1/.test(location.search);
+const $ = id => document.getElementById(id);
+const only = (location.search.match(/only=(\d)/) || [])[1];
+if (only != null) document.querySelectorAll('section').forEach((s, i) => { if (String(i) !== only) s.style.display = 'none'; });
+Chain.render($('c0'), phones, null, { animate });
+Chain.render($('c1'), phones, dropped, { animate });
+Chain.render($('c2'), phones, nolink, { animate });
+Chain.render($('c3'), phones, none, { animate });
+Chain.render($('c4'), phones, defend, { animate, mode: 'defend' });
+Chain.render($('c5'), homework, sowhat, { animate });
+Chain.compare($('c6'), phones, dropped, none);
+Chain.render($('c7'), phones, Object.assign({}, nolink, { confidence: 0.45 }), { animate });
+let c7anims = -1;
+setTimeout(() => { c7anims = document.getAnimations().filter(a => a.effect && a.effect.target && $('c7').contains(a.effect.target)).length; }, 200);
+
+// Layout check: text inside its box, inside the svg, no two boxes overlapping.
+function check() {
+  const problems = [];
+  const inside = (a, b, tol) => a.x >= b.x - tol && a.y >= b.y - tol && a.x + a.width <= b.x + b.width + tol && a.y + a.height <= b.y + b.height + tol;
+  const hit = (a, b) => a.x < b.x + b.width - 1 && b.x < a.x + a.width - 1 && a.y < b.y + b.height - 1 && b.y < a.y + a.height - 1;
+  document.querySelectorAll('svg.bp-chain').forEach((svg, si) => {
+    const vb = svg.viewBox.baseVal, frame = { x: 0, y: 0, width: vb.width, height: vb.height };
+    const name = (svg.closest('section') || svg).querySelector('h2') ? svg.closest('section').querySelector('h2').textContent.slice(0, 10) : 'svg' + si;
+    svg.querySelectorAll('text').forEach(t => { if (!inside(t.getBBox(), frame, 0.5)) problems.push(name + ': text outside svg "' + t.textContent + '"'); });
+    svg.querySelectorAll('.bp-node, .bp-chip').forEach(g => {
+      const r = g.querySelector('rect').getBBox();
+      g.querySelectorAll(':scope > text').forEach(t => { if (!inside(t.getBBox(), r, 0.5)) problems.push(name + ': text outside its box "' + t.textContent + '"'); });
+    });
+    const boxes = [];
+    svg.querySelectorAll('.bp-node, .bp-chip').forEach(g => boxes.push({ el: g, b: g.querySelector('rect').getBBox() }));
+    svg.querySelectorAll('text').forEach(t => { if (!t.closest('.bp-node, .bp-chip')) boxes.push({ el: t, b: t.getBBox() }); });
+    for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+      if (hit(boxes[i].b, boxes[j].b)) problems.push(name + ': overlap "' + boxes[i].el.textContent.slice(0, 30) + '" x "' + boxes[j].el.textContent.slice(0, 30) + '"');
+    }
+  });
+  const msg = (problems.length ? 'Layout check: ' + problems.length + ' problem(s): ' + problems.join(' | ') : 'Layout check: OK (' + document.querySelectorAll('svg.bp-chain').length + ' diagrams, width ' + innerWidth + ')') + ' · padded host animations at 200ms: ' + c7anims;
+  $('check').textContent = msg;
+  document.title = problems.length ? 'CHECK:FAIL' : 'CHECK:OK';
+}
+setTimeout(check, animate ? 4500 : 50);
+</script>
+</body>
+</html>
